@@ -6,12 +6,16 @@ const AUTH_TOKEN = process.env.TALENT_TOKEN;
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const { id } = await params;
   const body = await req.json();
+
+  // console.log("LOG DARI API ROUTE - DATA MASUK:", body);
+
   const res = await fetch(`${API_URL}/${id}`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${AUTH_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const data = await res.json();
+  // console.log("RESPON DARI DATABASE PUSAT:", data);
   return NextResponse.json(data);
 }
 

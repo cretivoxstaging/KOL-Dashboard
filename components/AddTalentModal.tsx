@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { X, User, Share2, Briefcase, Heart } from "lucide-react";
 
-// 1. Tambahkan initialData di interface props
 export default function AddTalentModal({
   onClose,
   onSave,
@@ -10,16 +9,15 @@ export default function AddTalentModal({
 }: {
   onClose: () => void;
   onSave: (data: any) => void;
-  initialData?: any; // Data lama untuk diedit
+  initialData?: any;
 }) {
-  // 2. Inisialisasi state dengan initialData jika ada, jika tidak pakai default
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     name: "",
     domisili: "",
     igAccount: "",
-    igFollowers: 0,
+    igFollowers: "",
     tiktokAccount: "",
-    tiktokFollowers: 0,
+    tiktokFollowers: "",
     contactPerson: "",
     suku: "",
     agama: "",
@@ -32,25 +30,12 @@ export default function AddTalentModal({
     tempatKuliah: "",
     category: "Beauty",
     tier: "Nano",
-    rateCard: 0,
     color: "#1B4D66",
     monthlyImpressions: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    rateCard: "",
+    youtube_username: "",
+    youtube_subscriber: "",
   });
-
-  const ZODIAC_OPTIONS = [
-    "Aries",
-    "Taurus",
-    "Gemini",
-    "Cancer",
-    "Leo",
-    "Virgo",
-    "Libra",
-    "Scorpio",
-    "Sagittarius",
-    "Capricorn",
-    "Aquarius",
-    "Pisces",
-  ];
 
   const RELIGION_OPTIONS = [
     "Islam",
@@ -62,42 +47,19 @@ export default function AddTalentModal({
     "Other",
   ];
 
-
-  // 3. Gunakan useEffect untuk update formData jika initialData berubah
-useEffect(() => {
-  if (initialData) {
-    setFormData({
-      ...initialData,
-      tier: initialData.tier || "", 
-      domisili: initialData.domisili || "",
-      igAccount: initialData.igAccount || "",
-    });
-  } else {
-    setFormData({
-      name: "",
-      domisili: "",
-      igAccount: "",
-      igFollowers: 0,
-      tiktokAccount: "",
-      tiktokFollowers: 0,
-      contactPerson: "",
-      suku: "",
-      agama: "",
-      alasan: "",
-      hobby: "",
-      umur: "",
-      pekerjaan: "",
-      zodiac: "",
-      status: "Active",
-      tempatKuliah: "",
-      category: "Beauty",
-      tier: "Nano",
-      rateCard: 0,
-      color: "#1B4D66",
-      monthlyImpressions: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    }); 
-  }
-}, [initialData]);
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        tier: initialData.tier || "Nano",
+        domisili: initialData.domisili || "",
+        igAccount: initialData.igAccount || "",
+        status: initialData.status || "Active",
+        youtube_username: initialData.youtube_username || "",
+        youtube_subscriber: initialData.youtube_subscriber ?? "",
+      });
+    }
+  }, [initialData]);
 
   const handleSubmit = () => {
     if (!formData.name) return alert("Nama wajib diisi!");
@@ -107,7 +69,7 @@ useEffect(() => {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-[15px] w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
-        {/* HEADER - Judul dinamis */}
+        {/* HEADER */}
         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
           <div>
             <h3 className="text-2xl font-bold text-[#1B3A5B]">
@@ -133,7 +95,6 @@ useEffect(() => {
               </h4>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Tambahkan value={formData.xxx} agar data lama muncul */}
               <Input
                 label="Full Name"
                 value={formData.name}
@@ -216,7 +177,7 @@ useEffect(() => {
             </div>
           </section>
 
-          {/* SECTION 2: BACKGROUND & EDUCATION */}
+          {/* SECTION 2: BACKGROUND */}
           <section className="space-y-4">
             <div className="flex items-center gap-2 text-[#1B3A5B] mb-2">
               <Briefcase size={18} className="text-orange-500" />
@@ -254,7 +215,7 @@ useEffect(() => {
             </div>
           </section>
 
-          {/* SECTION 3: SOCIAL MEDIA & BUSINESS */}
+          {/* SECTION 3: SOCIAL MEDIA */}
           <section className="space-y-4">
             <div className="flex items-center gap-2 text-[#1B3A5B] mb-2">
               <Share2 size={18} className="text-pink-500" />
@@ -263,23 +224,85 @@ useEffect(() => {
               </h4>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Instagram Account"
-                value={formData.igAccount}
-                placeholder="@username"
-                onChange={(v: string) =>
-                  setFormData({ ...formData, igAccount: v })
-                }
-              />
+              {/* INSTAGRAM ACCOUNT + SYNC BUTTON */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Instagram Account
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formData.igAccount}
+                    placeholder="@username"
+                    onChange={(e) =>
+                      setFormData({ ...formData, igAccount: e.target.value })
+                    }
+                    className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  />
+                  {/* <button
+                    type="button"
+                    disabled={!formData.igAccount}
+                    className="bg-blue-50 text-blue-600 px-4 rounded-xl text-xs font-bold hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={async () => {
+                      try {
+                        const userOnly = formData.igAccount.replace("@", "");
+                        const res = await fetch(
+                          `/API/Instagram?username=${userOnly}`
+                        );
+                        const data = await res.json();
+
+                        if (data.followers) {
+                          const numFollowers = data.followers;
+
+                          // Kalkulasi Tier Otomatis
+                          let newTier = "Nano";
+                          if (numFollowers >= 1000000) newTier = "Mega";
+                          else if (numFollowers >= 100000) newTier = "Makro";
+                          else if (numFollowers >= 10000) newTier = "Mikro";
+                          else if (numFollowers >= 1000) newTier = "Nano";
+
+                          setFormData({
+                            ...formData,
+                            igFollowers: numFollowers,
+                            tier: newTier,
+                          });
+                          alert(
+                            `Sync Berhasil! Followers: ${numFollowers.toLocaleString()}`
+                          );
+                        } else {
+                          alert(
+                            "Error: " + (data.error || "User tidak ditemukan")
+                          );
+                        }
+                      } catch (err) {
+                        alert("Gagal koneksi ke API");
+                      }
+                    }}
+                  >
+                    Sync
+                  </button> */}
+                </div>
+              </div>
+
+              {/* IG FOLLOWERS */}
               <Input
                 label="IG Followers"
                 type="number"
                 value={formData.igFollowers}
                 placeholder="10000"
-                onChange={(v: string) =>
-                  setFormData({ ...formData, igFollowers: parseInt(v) })
-                }
+                onChange={(v: string) => {
+                  const val = v === "" ? "" : parseInt(v);
+                  const numForTier = typeof val === "number" ? val : 0;
+                  let newTier = "Nano";
+                  if (numForTier >= 1000000) newTier = "Mega";
+                  else if (numForTier >= 100000) newTier = "Makro";
+                  else if (numForTier >= 10000) newTier = "Mikro";
+                  else if (numForTier >= 1000) newTier = "Nano";
+
+                  setFormData({ ...formData, igFollowers: val, tier: newTier });
+                }}
               />
+
               <Input
                 label="TikTok Account"
                 value={formData.tiktokAccount}
@@ -294,7 +317,30 @@ useEffect(() => {
                 value={formData.tiktokFollowers}
                 placeholder="50000"
                 onChange={(v: string) =>
-                  setFormData({ ...formData, tiktokFollowers: parseInt(v) })
+                  setFormData({
+                    ...formData,
+                    tiktokFollowers: v === "" ? "" : parseInt(v),
+                  })
+                }
+              />
+              <Input
+                label="YouTube Username"
+                value={formData.youtube_username}
+                placeholder="@channelname"
+                onChange={(v: string) =>
+                  setFormData({ ...formData, youtube_username: v })
+                }
+              />
+              <Input
+                label="YouTube Subscribers"
+                type="number"
+                placeholder="50000"
+                value={formData.youtube_subscriber}
+                onChange={(v: string) =>
+                  setFormData({
+                    ...formData,
+                    youtube_subscriber: v === "" ? "" : parseInt(v),
+                  })
                 }
               />
               <Input
@@ -305,15 +351,21 @@ useEffect(() => {
                   setFormData({ ...formData, contactPerson: v })
                 }
               />
-              <Input
-                label="Rate Card (Rp)"
-                type="number"
-                value={formData.rateCard}
-                placeholder="1500000"
-                onChange={(v: string) =>
-                  setFormData({ ...formData, rateCard: parseInt(v) })
-                }
-              />
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Status Talent
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value })
+                  }
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 text-sm focus:border-[#1B3A5B] outline-none bg-white shadow-sm transition-all"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
@@ -324,25 +376,14 @@ useEffect(() => {
                   setFormData({ ...formData, category: v })
                 }
               />
+              {/* TAMPILAN TIER OTOMATIS (READ ONLY) */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">
-                  Talent Tier
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Calculated Tier
                 </label>
-                <select
-                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
-                  value={formData.tier}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tier: e.target.value })
-                  }
-                  required
-                >
-                  <option value="">Select Tier</option>
-                  {["Mega", "Macro", "Micro", "Nano"].map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-[#1B3A5B]">
+                  {formData.tier}
+                </div>
               </div>
             </div>
           </section>
@@ -391,8 +432,13 @@ useEffect(() => {
   );
 }
 
-// 4. Update Helper Components untuk menerima props 'value'
 function Input({ label, type = "text", placeholder, value, onChange }: any) {
+  // Proteksi mutlak agar tidak mengirim NaN atau null ke atribut value
+  const displayValue =
+    value === null || value === undefined || (type === "number" && isNaN(value))
+      ? ""
+      : value;
+
   return (
     <div>
       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -401,7 +447,7 @@ function Input({ label, type = "text", placeholder, value, onChange }: any) {
       <input
         type={type}
         placeholder={placeholder}
-        value={value} // Data akan muncul otomatis di kotak input
+        value={displayValue}
         onChange={(e) => onChange(e.target.value)}
         className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
       />
@@ -416,9 +462,9 @@ function Select({ label, options, value, onChange }: any) {
         {label}
       </label>
       <select
-        value={value} // Dropdown akan terpilih sesuai data lama
+        value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm outline-none"
+        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm outline-none bg-white"
       >
         {options.map((opt: string) => (
           <option key={opt} value={opt}>

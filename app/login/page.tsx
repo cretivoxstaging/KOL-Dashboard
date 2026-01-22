@@ -41,7 +41,7 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-[#E9EDF0]">
       {/* Kontainer Utama */}
-      <div className="flex-grow flex items-center justify-center p-4">
+      <div className="grow flex items-center justify-center p-4">
         <div className="bg-black p-12 rounded-lg shadow-sm w-full max-w-md border border-gray-200">
           <h1 className="text-3xl font-semibold text-white text-center mb-10">
             Login

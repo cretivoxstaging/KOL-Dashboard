@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Users, Cake, TrendingUp } from "lucide-react";
+import { Users, Cake, TrendingUp, UserX, UserCheck } from "lucide-react";
 import { AreaChart, Area } from "recharts";
 import {
   PieChart,
@@ -28,16 +28,18 @@ export default function DashboardView({
   // 1. Hitung Total Valuation
   const totalValuation = talents.reduce(
     (acc, curr) => acc + (curr.rateCard || 0),
-    0
+    0,
   );
 
   const totalAge = talents.reduce(
     (acc, curr) => acc + (parseInt(curr.umur) || 0),
-    0
+    0,
   );
   const avgAge =
     talents.length > 0 ? (totalAge / talents.length).toFixed(1) : 0;
 
+  const activeCount = talents.filter((t) => t.status === "Active").length;
+  const inactiveCount = talents.filter((t) => t.status === "Inactive").length;
   const rangeData = [
     { category: "Beauty", min: 2000000, max: 5000000 },
     { category: "Food", min: 1500000, max: 4000000 },
@@ -110,20 +112,20 @@ export default function DashboardView({
 
   // 3. LOGIKA DISTRIBUSI UMUR (PIE CHART)
   const ageGroups = {
-    "10-20": 0,
-    "21-30": 0,
-    "31-40": 0,
-    "41-50": 0,
-    "51+": 0,
+    "age 10-20": 0,
+    "age 21-30": 0,
+    "age 31-40": 0,
+    "age 41-50": 0,
+    "age 51+": 0,
   };
 
   talents.forEach((t) => {
     const age = parseInt(t.umur);
-    if (age >= 10 && age <= 20) ageGroups["10-20"]++;
-    else if (age >= 21 && age <= 30) ageGroups["21-30"]++;
-    else if (age >= 31 && age <= 40) ageGroups["31-40"]++;
-    else if (age >= 41 && age <= 50) ageGroups["41-50"]++;
-    else if (age > 50) ageGroups["51+"]++;
+    if (age >= 10 && age <= 20) ageGroups["age 10-20"]++;
+    else if (age >= 21 && age <= 30) ageGroups["age 21-30"]++;
+    else if (age >= 31 && age <= 40) ageGroups["age 31-40"]++;
+    else if (age >= 41 && age <= 50) ageGroups["age 41-50"]++;
+    else if (age > 50) ageGroups["age 51+"]++;
   });
 
   const ageData = Object.keys(ageGroups).map((key) => ({
@@ -161,7 +163,7 @@ export default function DashboardView({
       if (acc[tier] !== undefined) acc[tier]++;
       return acc;
     },
-    { Mega: 0, Macro: 0, Micro: 0, Nano: 0 }
+    { Mega: 0, Macro: 0, Micro: 0, Nano: 0 },
   );
 
   // Total Talent untuk hitung persentase (opsional)
@@ -200,10 +202,35 @@ export default function DashboardView({
           color="bg-blue-50 text-blue-600"
         />
         <StatCard
-          title="Average Age"
-          value={avgAge}
-          icon={<Cake size={20} />}
-          color="bg-green-50 text-green-600"
+          title="Talent Availability"
+          value={
+            <div className="flex items-center gap-6 mt-1">
+              {/* Bagian Aktif */}
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-slate-800">
+                  {activeCount}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                  Active
+                </span>
+              </div>
+
+              {/* Pembatas Garis Halus */}
+              <div className="h-10 bg-slate-200" />
+
+              {/* Bagian Nonaktif */}
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-slate-800">
+                  {inactiveCount}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
+                  Inactive
+                </span>
+              </div>
+            </div>
+          }
+          icon={<Users size={20} />}
+          color="bg-slate-50 text-slate-600"
         />
         {/* CARD: TALENT COMPOSITION */}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center h-full col-span-1 md:col-span-2">
@@ -224,7 +251,6 @@ export default function DashboardView({
               </span>
             </div>
           </div>
-
           {/* BAGIAN KANAN: BARIS PROGRESS (2 KOLOM RAPI) */}
           <div className="flex-1 pl-10">
             <div className="grid grid-cols-2 gap-x-12 gap-y-5">
@@ -255,8 +281,9 @@ export default function DashboardView({
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                       {item.label}
                     </span>
-                    <span className="text-[11px] font-black text-slate-800">
-                      {item.count}{" "}
+                    <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
+                      {item.count}
+                      {""}
                       <span className="text-[9px] text-slate-400 font-bold">
                         TALENT
                       </span>
@@ -310,7 +337,13 @@ export default function DashboardView({
                   tickLine={false}
                   tick={{ fontSize: 10, fill: "#94A3B8" }}
                 />
-                <Tooltip cursor={{ fill: "#F8FAFC" }} />
+                <Tooltip
+                  formatter={(
+                    value: number | undefined,
+                    name: string | undefined,
+                  ) => [`${value || 0} Talent`, name]}
+                  cursor={{ fill: "#F8FAFC" }}
+                />
                 <Bar
                   dataKey="total"
                   fill="#1B4D66"
@@ -347,9 +380,9 @@ export default function DashboardView({
               <PieChart>
                 <Pie
                   data={ageData}
-                  innerRadius={65} // Dibuat sedikit lebih tipis agar center info lega
+                  innerRadius={65}
                   outerRadius={85}
-                  paddingAngle={8} // Jarak antar potongan diperlebar biar modern
+                  paddingAngle={8}
                   dataKey="value"
                   stroke="none"
                 >
@@ -362,6 +395,10 @@ export default function DashboardView({
                   ))}
                 </Pie>
                 <Tooltip
+                  formatter={(
+                    value: number | undefined,
+                    name: string | undefined,
+                  ) => [`${value || 0} Talent`, name]}
                   contentStyle={{
                     borderRadius: "12px",
                     border: "none",
@@ -395,7 +432,7 @@ export default function DashboardView({
                 {Math.min(...talents.map((t) => parseInt(t.umur) || 99))}
               </p>
             </div>
-            <div className="h-8 w-[1px] bg-slate-100"></div>
+            <div className="h-8 bg-slate-100"></div>
             <div className="text-center flex-1">
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
                 Main Group
@@ -404,7 +441,7 @@ export default function DashboardView({
                 {ageData.sort((a, b) => b.value - a.value)[0]?.name || "-"}
               </p>
             </div>
-            <div className="h-8 w-[1px] bg-slate-100"></div>
+            <div className="h-8 bg-slate-100"></div>
             <div className="text-center flex-1">
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
                 Oldest
@@ -461,6 +498,10 @@ export default function DashboardView({
                   ))}
                 </Pie>
                 <Tooltip
+                  formatter={(
+                    value: number | undefined,
+                    name: string | undefined,
+                  ) => [`${value || 0} Talent`, name]}
                   contentStyle={{
                     borderRadius: "12px",
                     border: "none",
@@ -509,7 +550,13 @@ export default function DashboardView({
                   tickLine={false}
                   tick={{ fontSize: 10, fill: "#94A3B8" }}
                 />
-                <Tooltip cursor={{ fill: "#F8FAFC" }} />
+                <Tooltip
+                  formatter={(
+                    value: number | undefined,
+                    name: string | undefined,
+                  ) => [`${value || 0} Talent`, name]}
+                  cursor={{ fill: "#F8FAFC" }}
+                />
                 <Bar
                   dataKey="total"
                   fill="#E956D3"
@@ -532,11 +579,9 @@ function StatCard({ title, value, icon, color }: any) {
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
           {title}
         </p>
-        <p className="text-2xl font-bold text-slate-800">{value}</p>
+        <div className="text-2xl font-bold text-slate-800">{value}</div>
       </div>
-      <div
-        className={`p-3 rounded-2xl ${color} transition-transform`}
-      >
+      <div className={`p-3 rounded-2xl ${color} transition-transform`}>
         {icon}
       </div>
     </div>

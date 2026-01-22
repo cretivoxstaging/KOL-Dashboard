@@ -17,6 +17,8 @@ interface Talent {
   igFollowers: number;
   tiktokAccount: string;
   tiktokFollowers: number;
+  youtube_username: string;
+  youtube_subscriber: number;
   totalFollowers: number;
   contactPerson: string;
   suku: string;
@@ -32,11 +34,12 @@ interface Talent {
   status: string;
   monthlyImpressions?: number[];
   tier: string;
+  last_update?: string;
 }
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "talent" | "tax">(
-    "dashboard"
+    "dashboard",
   );
   const [talents, setTalents] = useState<Talent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,7 +50,7 @@ export default function Page() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Untuk Mobile
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // Tambahkan ini untuk Desktop minimize
   const [selectedReligion, setSelectedReligion] = useState("All");
-  const [selectedZodiac, setSelectedZodiac] = useState("All");
+  const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedTier, setSelectedTier] = useState("All");
   const [selectedAgeRange, setSelectedAgeRange] = useState("All");
   const API_URL = "/API/Talent";
@@ -69,11 +72,10 @@ export default function Page() {
         selectedReligion === "All" || t.agama === selectedReligion;
 
       // Filter Zodiac
-      const matchZodiac =
-        selectedZodiac === "All" || t.zodiac === selectedZodiac;
+      const matchStatus =
+        selectedStatus === "All" || t.status === selectedStatus;
 
-
-    const matchTier = selectedTier === "All" || t.tier === selectedTier;
+      const matchTier = selectedTier === "All" || t.tier === selectedTier;
 
       // Filter Umur (Range)
       const age = parseInt(t.umur) || 0;
@@ -88,7 +90,7 @@ export default function Page() {
         selectedAgeRange === "All" || ageRange === selectedAgeRange;
 
       return (
-        matchSearch && matchReligion && matchZodiac && matchTier && matchAge
+        matchSearch && matchReligion && matchStatus && matchTier && matchAge
       );
     })
     .sort((a, b) => {
@@ -174,14 +176,14 @@ export default function Page() {
             zodiac: t.zodiac,
             tempatKuliah: t.university,
             category: t.category || "Uncategorized",
-            rateCard: t.rate_card
-              ? parseInt(String(t.rate_card).replace(/[^0-9]/g, "")) || 0
-              : 0,
             status: t.status === "active" ? "Active" : "Inactive",
             monthlyImpressions: t.monthly_impressions || [
               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ],
             tier: t.tier || "Nano",
+            youtube_subscriber: t.youtube_subscriber,
+            youtube_username: t.youtube_username || "",
+            last_update: t.last_update,
           };
         });
         setTalents(mappedData);
@@ -208,6 +210,8 @@ export default function Page() {
         instagram_followers: String(formData.igFollowers),
         tiktok_username: formData.tiktokAccount,
         tiktok_followers: String(formData.tiktokFollowers),
+        youtube_username: formData.youtube_username,
+        youtube_subscriber: String(formData.youtube_subscriber),
         contact_person: formData.contactPerson,
         ethnicity: formData.suku,
         religion: formData.agama,
@@ -219,8 +223,9 @@ export default function Page() {
         university: formData.tempatKuliah,
         category: formData.category,
         rate_card: String(formData.rateCard),
-        status: "active",
+        status: formData.status.toLowerCase(),
         tier: formData.tier,
+        last_update: new Date().toISOString(),
       };
 
       if (talentToEdit) {
@@ -243,7 +248,7 @@ export default function Page() {
   const handleDeleteTalent = async (id: number) => {
     if (
       window.confirm(
-        "Apakah Anda yakin ingin menghapus talent ini secara permanen?"
+        "Apakah Anda yakin ingin menghapus talent ini secara permanen?",
       )
     ) {
       try {
@@ -284,7 +289,7 @@ export default function Page() {
       talents.length > 0
         ? talents.reduce(
             (acc, curr) => acc + (curr.monthlyImpressions?.[i] || 0),
-            0
+            0,
           ) / talents.length
         : 0,
   }));
@@ -415,8 +420,8 @@ export default function Page() {
                   setSortBy={setSortBy}
                   selectedReligion={selectedReligion}
                   setSelectedReligion={setSelectedReligion}
-                  selectedZodiac={selectedZodiac}
-                  setSelectedZodiac={setSelectedZodiac}
+                  selectedStatus={selectedStatus}
+                  setSelectedStatus={setSelectedStatus}
                   selectedTier={selectedTier}
                   setSelectedTier={setSelectedTier}
                   selectedAgeRange={selectedAgeRange}

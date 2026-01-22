@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/API/cron/update?key=rahasia",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

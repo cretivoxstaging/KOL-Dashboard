@@ -35,6 +35,9 @@ export default function AddTalentModal({
     rateCard: "",
     youtube_username: "",
     youtube_subscriber: "",
+    email: "",
+    hijab: "no",
+    gender: "",
   });
 
   const RELIGION_OPTIONS = [
@@ -57,6 +60,9 @@ export default function AddTalentModal({
         status: initialData.status || "Active",
         youtube_username: initialData.youtube_username || "",
         youtube_subscriber: initialData.youtube_subscriber ?? "",
+        email: initialData.email || "",
+      hijab: initialData.hijab || "no", 
+      gender: initialData.gender || "", 
       });
     }
   }, [initialData]);
@@ -174,6 +180,42 @@ export default function AddTalentModal({
                   setFormData({ ...formData, domisili: v })
                 }
               />
+              <Input
+    label="Email Address"
+    type="email"
+    value={formData.email}
+    placeholder="talent@example.com"
+    onChange={(v: string) => setFormData({ ...formData, email: v })}
+  />
+  
+  <div className="space-y-2">
+    <label className="text-xs font-bold text-slate-500 uppercase">
+      Gender
+    </label>
+    <select
+      className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
+      value={formData.gender}
+      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+    >
+      <option value="">Select Gender</option>
+      <option value="Laki-laki">Laki-laki</option>
+      <option value="Perempuan">Perempuan</option>
+    </select>
+  </div>
+
+  <div className="space-y-2">
+    <label className="text-xs font-bold text-slate-500 uppercase">
+      Hijab Status
+    </label>
+    <select
+      className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
+      value={formData.hijab}
+      onChange={(e) => setFormData({ ...formData, hijab: e.target.value })}
+    >
+      <option value="no">No</option>
+      <option value="yes">Yes</option>
+    </select>
+  </div>
             </div>
           </section>
 

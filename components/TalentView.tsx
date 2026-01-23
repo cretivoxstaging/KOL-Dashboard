@@ -14,6 +14,7 @@ import {
   Youtube,
   Upload,
   Clock,
+  RefreshCw,
 } from "lucide-react";
 
 interface Talent {
@@ -42,6 +43,9 @@ interface Talent {
   youtube_username?: string;
   youtube_subscriber?: number;
   last_update?: string;
+  email?: string;
+  hijab?: string;
+  gender?: string;
 }
 
 interface TalentViewProps {
@@ -55,7 +59,6 @@ interface TalentViewProps {
   onUpdate: (talent: any) => void;
   sortBy: string;
   setSortBy: (value: string) => void;
-  // Props Filter Advanced
   selectedReligion: string;
   setSelectedReligion: (val: string) => void;
   selectedTier: string;
@@ -64,6 +67,8 @@ interface TalentViewProps {
   setSelectedAgeRange: (val: string) => void;
   selectedStatus: string;
   setSelectedStatus: (val: string) => void;
+  onRefresh: () => void;
+  isLoading: boolean;
 }
 
 export default function TalentView({
@@ -85,10 +90,15 @@ export default function TalentView({
   setSelectedAgeRange,
   selectedStatus,
   setSelectedStatus,
+  onRefresh,
+  isLoading,
 }: TalentViewProps) {
   const [selectedDetail, setSelectedDetail] = useState<Talent | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [isImporting, setIsImporting] = useState(false);
+  const [talentToDelete, setTalentToDelete] = useState<Talent | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   useEffect(() => {
     if (selectedDetail) {
@@ -138,6 +148,13 @@ export default function TalentView({
     }
   };
 
+  const calculateTier = (followers: number) => {
+    if (followers >= 1000000) return "Mega";
+    if (followers >= 100000) return "Macro";
+    if (followers >= 10000) return "Micro";
+    return "Nano";
+  };
+
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -147,117 +164,119 @@ export default function TalentView({
       try {
         const bstr = event.target?.result;
         const wb = XLSX.read(bstr, { type: "binary" });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
+        const ws = wb.Sheets[wb.SheetNames[0]];
 
-        // Convert Excel ke JSON
-        const rawData: any[] = XLSX.utils.sheet_to_json(ws);
+        // Pakai range: 1 karena header lo ada di baris ke-2
+        const rawData: any[] = XLSX.utils.sheet_to_json(ws, { range: 1 });
 
-        if (rawData.length === 0) return alert("File kosong!");
+        // Filter
+        const cleanData = rawData.filter((row) => row["Name"]);
 
-        // Konfirmasi sebelum hajar upload
-        if (!confirm(`Yakin mau import ${rawData.length} data talent?`)) return;
+        if (cleanData.length === 0)
+          return alert("Header 'Name' tidak ditemukan atau file kosong!");
+        if (!confirm(`Yakin mau import ${cleanData.length} talent?`)) return;
 
-        // Looping kirim ke API Talent lo
-        for (const row of rawData) {
+        for (const row of cleanData) {
+          // Helper biar followers gak rusak
+          const cleanNum = (v: any) => {
+            if (!v || v === "-" || v === "N/A") return ""; // Samain dengan manual Add ("")
+            return String(v).replace(/\D/g, "");
+          };
+
+          const payload = {
+            // Kunci-kunci ini HARUS sama persis dengan yang di handleSaveTalent (Page.tsx)
+            name: String(row["Name"] || ""),
+            domicile: "-",
+            instagram_username: String(row["Username_Instagram"] || ""),
+            instagram_followers: cleanNum(row["Followers_Instagram"]),
+            tiktok_username: String(row["Username_Tiktok"] || "-"),
+            tiktok_followers: cleanNum(row["Followers_Tiktok"]),
+            youtube_username: "-",
+            youtube_subscriber: "",
+            contact_person: String(row["Phone Number"] || ""),
+            ethnicity: "-",
+            religion: "Other",
+            reason_for_joining: "-",
+            hobby: "-",
+            age: "",
+            occupation: "-",
+            zodiac: "-",
+            university: "-",
+            category: String(row["Category"] || "Beauty"),
+            rate_card: "",
+            status: "active",
+            tier: String(row["Tier"] || "Nano"),
+            last_update: new Date().toISOString(),
+            email: String(row["Email"] || "-"),
+            hijab: String(row["Hijab/Non"] || "no")
+              .toLowerCase()
+              .includes("non")
+              ? "no"
+              : "yes",
+            gender: String(row["Gender"] || "-"),
+          };
+
+          console.log("Kirim payload import:", payload);
+
           await fetch("/API/Talent", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: row["Nama Talent"] || row.name,
-              tier: row.Tier || "Nano",
-              status: row.Status || "Active",
-              category: row.Kategori || row.category,
-              domisili: row.Domisili || row.domisili,
-              igAccount: row["Instagram Username"] || row.igAccount,
-              igFollowers: Number(row["Instagram Followers"]) || 0,
-              tiktokAccount: row["TikTok Username"] || row.tiktokAccount,
-              tiktokFollowers: Number(row["TikTok Followers"]) || 0,
-              rateCard: Number(row["Rate Card (IDR)"]) || 0,
-              contactPerson: String(row["Contact Person"] || ""),
-              umur: String(row.Umur || ""),
-              pekerjaan: row.Pekerjaan || "",
-              tempatKuliah: row["Pendidikan/Kampus"] || "",
-              suku: row["Suku/Ethnicity"] || "",
-              agama: row.Agama || "",
-              zodiac: row.Zodiac || "",
-              hobby: row.Hobby || "",
-              alasan: row["Alasan Bergabung"] || "",
-              last_update: new Date().toISOString(),
-            }),
+            body: JSON.stringify(payload),
           });
         }
 
-        alert("Import Berhasil! Refresh halaman untuk melihat data.");
-        window.location.reload(); // Paksa refresh biar data muncul
+        alert(`Beres! ${cleanData.length} data sukses diproses.`);
+        onRefresh(); // Supaya Page.tsx narik data terbaru ke tabel
       } catch (err) {
         console.error(err);
-        alert("Gagal membaca file Excel. Pastikan format kolom benar.");
+        alert("Format file salah atau sistem error.");
+      } finally {
+        // setIsImporting(false);
       }
     };
     reader.readAsBinaryString(file);
   };
 
   const handleExportExcel = () => {
-    // Ambil data yang sudah di-filter (bukan seluruh database)
     const dataToExport = filteredTalent.map((t, index) => ({
       No: index + 1,
-      "Nama Talent": t.name,
-      Tier: t.tier,
-      Status: t.status,
-      Kategori: t.category,
-      Domisili: t.domisili,
-      "Instagram Username": t.igAccount,
-      "Instagram Followers": t.igFollowers,
+      Name: t.name,
+      "IG Username": t.igAccount,
+      "IG Followers": t.igFollowers,
+      "IG Tier": t.tier,
       "TikTok Username": t.tiktokAccount,
       "TikTok Followers": t.tiktokFollowers,
-      "Total Followers": t.totalFollowers,
-      "Rate Card (IDR)": t.rateCard,
-      "Contact Person": t.contactPerson,
-      Umur: t.umur,
-      Pekerjaan: t.pekerjaan,
-      "Pendidikan/Kampus": t.tempatKuliah,
-      "Suku/Ethnicity": t.suku,
-      Agama: t.agama,
-      Zodiac: t.zodiac,
-      Hobby: t.hobby,
-      "Alasan Bergabung": t.alasan,
+      Category: t.category,
+      Gender: t.gender,
+      "Hijab Status": t.hijab === "yes" ? "Hijab" : "Non Hijab",
+      Email: t.email,
+      "Phone Number": t.contactPerson,
+      "Last Updated": t.last_update,
     }));
 
-    // Mengatur lebar kolom otomatis (opsional tapi biar rapi)
-    const columnWidths = [
-      { wch: 5 }, // No
-      { wch: 25 }, // Nama
-      { wch: 10 }, // Tier
-      { wch: 10 }, // Status
-      { wch: 15 }, // Kategori
-      { wch: 20 }, // Domisili
-      { wch: 20 }, // IG
-      { wch: 15 }, // IG Followers
-      { wch: 20 }, // TikTok
-      { wch: 15 }, // TikTok Followers
-      { wch: 15 }, // Total
-      { wch: 15 }, // Rate Card
-      { wch: 20 }, // CP
-      { wch: 8 }, // Umur
-      { wch: 20 }, // Pekerjaan
-      { wch: 25 }, // Pendidikan
-      { wch: 15 }, // Suku
-      { wch: 12 }, // Agama
-      { wch: 12 }, // Zodiac
-      { wch: 25 }, // Hobby
-      { wch: 50 }, // Alasan
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Atur lebar kolom biar gak berantakan pas dibuka
+    worksheet["!cols"] = [
+      { wch: 5 },
+      { wch: 25 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 25 },
+      { wch: 20 },
+      { wch: 25 },
     ];
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    worksheet["!cols"] = columnWidths;
-
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Data Talent Lengkap");
-
-    // Download file dengan nama yang ada tanggalnya
+    XLSX.utils.book_append_sheet(workbook, worksheet, "KOL Database");
     const date = new Date().toISOString().split("T")[0];
-    XLSX.writeFile(workbook, `Database_Talent_Export_${date}.xlsx`);
+    XLSX.writeFile(workbook, `Cretivox_Talent_Export_${date}.xlsx`);
   };
   const isFilterActive =
     selectedReligion !== "All" ||
@@ -277,8 +296,52 @@ export default function TalentView({
     setCurrentPage(1);
   }, [searchTerm, selectedCategory, selectedTier, selectedReligion]);
 
-  function setTalentToDelete(selectedDetail: Talent) {
-    throw new Error("Function not implemented.");
+  function SortableHeader({
+    label,
+    field,
+    currentSort,
+    onSort,
+    align = "left",
+  }: any) {
+    const [sortField, sortOrder] = currentSort.split("-");
+    const isActive = sortField === field;
+
+    return (
+      <th
+        className={`p-5 cursor-pointer hover:bg-slate-300 transition-colors ${align === "center" ? "text-center" : ""}`}
+        onClick={() =>
+          onSort(
+            isActive && sortOrder === "desc" ? `${field}-asc` : `${field}-desc`,
+          )
+        }
+      >
+        <div
+          className={`flex items-center gap-2 ${align === "center" ? "justify-center" : ""}`}
+        >
+          {label}
+          <div className="flex flex-col text-[8px]">
+            <span
+              className={
+                isActive && sortOrder === "asc"
+                  ? "text-blue-600"
+                  : "text-slate-400"
+              }
+            >
+              ▲
+            </span>
+            <span
+              className={
+                isActive && sortOrder === "desc"
+                  ? "text-blue-600"
+                  : "text-slate-400"
+              }
+            >
+              ▼
+            </span>
+          </div>
+        </div>
+      </th>
+    );
   }
 
   return (
@@ -304,22 +367,6 @@ export default function TalentView({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-            </div>
-
-            <div className="flex items-center gap-2 bg-white px-3 py-2 border border-slate-200 rounded-xl shadow-sm">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="text-xs font-bold text-slate-700 outline-none bg-transparent cursor-pointer"
-              >
-                <option value="name-asc">A-Z</option>
-                <option value="name-desc">Z-A</option>
-                <option value="rate-high">Rate: High to Low</option>
-                <option value="rate-low">Rate: Low to High</option>
-                <option value="followers-high">Most Followers</option>
-                <option value="age-old">Age: Oldest</option>
-                <option value="age-young">Age: Youngest</option>
-              </select>
             </div>
             <FilterSelect
               placeholder="All Religion"
@@ -353,7 +400,7 @@ export default function TalentView({
               onChange={setSelectedStatus}
               options={["Active", "Inactive"]}
             />
-            <FilterSelect
+            {/* <FilterSelect
               placeholder="All Category"
               value={selectedCategory}
               onChange={setSelectedCategory}
@@ -365,7 +412,7 @@ export default function TalentView({
                 "Gaming",
                 "Finance",
               ]}
-            />
+            /> */}
           </div>
           <div className="ml-auto flex gap-4">
             <div className="relative group">
@@ -393,6 +440,17 @@ export default function TalentView({
               title="Add New Talent"
             >
               <Plus size={18} />
+            </button>
+            <button
+              onClick={onRefresh}
+              disabled={isLoading}
+              className="flex items-center gap-2 bg-white hover:bg-slate-100 hover:scale-110 text-slate-600 px-4 py-2.5 rounded-xl font-bold text-sm border border-slate-200 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+              title="Refresh Data"
+            >
+              <RefreshCw
+                size={18}
+                className={`${isLoading ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
         </div>
@@ -423,9 +481,20 @@ export default function TalentView({
           <thead>
             <tr className="bg-slate-200 text-slate-800 text-[12px] uppercase tracking-widest font-bold">
               <th className="p-5 text-center w-16">#</th>
-              <th className="p-5">Talent & Socials</th>
+              <SortableHeader
+                label="Talent & Socials"
+                field="name"
+                currentSort={sortBy}
+                onSort={setSortBy}
+              />
               <th className="p-5">Domisili</th>
-              <th className="p-5 text-center">Followers ig</th>
+              <SortableHeader
+                label="Followers IG"
+                field="igFollowers"
+                currentSort={sortBy}
+                onSort={setSortBy}
+                align="center"
+              />
               <th className="p-5 text-center">Tier</th>
               <th className="p-5 text-center">Status</th>
               <th className="p-5 text-center">Action</th>
@@ -558,6 +627,16 @@ export default function TalentView({
                     label="Domisili / Location"
                     value={selectedDetail.domisili}
                   />
+                  <DetailItem
+                    label="Gender"
+                    value={selectedDetail.gender || "-"}
+                  />
+                  <DetailItem
+                    label="Hijab Status"
+                    value={
+                      selectedDetail.hijab === "yes" ? "Hijab" : "Non-Hijab"
+                    }
+                  />
                 </div>
               </div>
 
@@ -617,6 +696,39 @@ export default function TalentView({
                       </span>
                     </a>
                   </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
+                      Business Email
+                    </p>
+                    {selectedDetail.email && selectedDetail.email !== "-" ? (
+                      <a
+                        href={`mailto:${selectedDetail.email}`}
+                        className="text-sm font-bold text-slate-700 flex items-center gap-2 hover:text-[#1B3A5B] transition-colors"
+                      >
+                        <div className="w-4 h-4 flex items-center justify-center">
+                          {/* Ikon Mail Sederhana */}
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </div>
+                        {selectedDetail.email}
+                      </a>
+                    ) : (
+                      <p className="text-sm font-bold text-slate-300 italic">
+                        - No Email Provided -
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                   <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
@@ -665,7 +777,13 @@ export default function TalentView({
                 >
                   <Edit3 size={18} /> Edit Profile
                 </button>
-                <button className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 shadow-lg shadow-red-200 transition-all active:scale-95">
+                <button
+                  onClick={() => {
+                    setTalentToDelete(selectedDetail);
+                    setSelectedDetail(null);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 shadow-lg shadow-red-200 transition-all active:scale-95"
+                >
                   <Trash2 size={18} /> Delete Talent
                 </button>
               </div>
@@ -757,6 +875,83 @@ export default function TalentView({
           </button>
         </div>
       </div>
+      {/* ================= MODAL DELETE VERIFICATION ================= */}
+      {talentToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6">
+              <div className="flex items-center gap-3 text-red-600 mb-4">
+                <Trash2 size={24} />
+                <h3 className="text-xl font-bold">Delete Employee</h3>
+              </div>
+
+              <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-6">
+                <p className="text-red-800 text-sm font-medium">
+                  <span className="font-bold">Warning:</span> This action cannot
+                  be undone. This will permanently delete the employee record.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
+                <p className="text-xs text-slate-500 uppercase font-bold mb-2">
+                  Employee to be deleted:
+                </p>
+                <div className="space-y-1">
+                  <p className="text-sm">
+                    <strong>Name:</strong> {talentToDelete.name}
+                  </p>
+                  <p className="text-sm">
+                    <strong>Category:</strong> {talentToDelete.category}
+                  </p>
+                  <p className="text-sm">
+                    <strong>Email:</strong> {talentToDelete.email}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-slate-700">
+                  Type <span className="text-red-600">delete</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium"
+                  placeholder="Type 'delete' here"
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="p-6 bg-slate-50 flex gap-3">
+              <button
+                onClick={() => {
+                  setTalentToDelete(null);
+                  setDeleteConfirmation("");
+                }}
+                className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={deleteConfirmation.toLowerCase() !== "delete"}
+                onClick={() => {
+                  onDelete(talentToDelete.id);
+                  setTalentToDelete(null);
+                  setDeleteConfirmation("");
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all ${
+                  deleteConfirmation.toLowerCase() === "delete"
+                    ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200"
+                    : "bg-red-300 cursor-not-allowed"
+                }`}
+              >
+                <Trash2 size={18} /> Delete Employee
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -803,45 +998,16 @@ function TalentRow({
   indexOfFirstItem: number;
   onDetailClick: (t: Talent) => void;
 }) {
-  const [followers, setFollowers] = useState<number>(t.igFollowers || 0);
-  const [syncing, setSyncing] = useState(false);
+  // 1. Gak perlu setFollowers lagi, pake data dari props t langsung
+  const followers = t.igFollowers || 0;
 
-  useEffect(() => {
-    // Di dalam useEffect TalentRow
-    const sync = async () => {
-      if (!t.igAccount) return;
+  const calculateTier = (followers: number) => {
+    if (followers >= 1000000) return "Mega";
+    if (followers >= 100000) return "Macro";
+    if (followers >= 10000) return "Micro";
+    return "Nano";
+  };
 
-      setSyncing(true);
-      try {
-        const username = (t.igAccount.split("/").pop() || "").replace("@", "");
-        const res = await fetch(`/API/instagram?username=${username}`);
-
-        // CEK DISINI: Jangan langsung .json() kalau statusnya bukan 200
-        if (!res.ok) {
-          console.error(`Server error: ${res.status}`);
-          return;
-        }
-
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          console.error("Dapetnya bukan JSON tapi HTML/Text!");
-          return;
-        }
-
-        const data = await res.json();
-        if (data.followers) {
-          setFollowers(data.followers);
-          // ... lanjut simpan ke DB
-        }
-      } catch (err) {
-        console.error("Gagal sinkronisasi", err);
-      } finally {
-        setSyncing(false);
-      }
-    };
-
-    sync();
-  }, [t.igAccount]);
   return (
     <tr className="border-t border-slate-50 hover:bg-slate-50 transition-colors">
       <td className="p-5 text-center font-bold text-slate-800">
@@ -867,32 +1033,25 @@ function TalentRow({
       </td>
       <td className="p-5 text-center">
         <div className="flex flex-col items-center justify-center">
-          <span
-            className={`font-bold ${syncing ? "text-blue-500 animate-pulse" : "text-slate-700"}`}
-          >
+          {/* 2. Tampilkan angka dari DB, gak pake state syncing lagi */}
+          <span className="font-bold text-slate-700">
             {followers.toLocaleString()}
           </span>
-          {syncing && (
-            <span className="text-[8px] text-blue-400 uppercase font-black">
-              Syncing...
-            </span>
-          )}
         </div>
       </td>
-      {/* ... Sisa kolom Tier, Status, dan Action sama seperti kode lama kamu ... */}
       <td className="p-5 text-center">
         <span
           className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-            t.tier === "Mega"
+            calculateTier(followers) === "Mega"
               ? "bg-purple-100 text-purple-700 border border-purple-200"
-              : t.tier === "Macro"
+              : calculateTier(followers) === "Macro"
                 ? "bg-blue-100 text-blue-700 border border-blue-200"
-                : t.tier === "Micro"
+                : calculateTier(followers) === "Micro"
                   ? "bg-cyan-100 text-cyan-700 border border-cyan-200"
                   : "bg-slate-100 text-slate-600 border border-slate-200"
           }`}
         >
-          {t.tier || "Nano"}
+          {calculateTier(followers)}
         </span>
       </td>
       <td className="p-5 text-center">

@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/API/cron/update?key=rahasia",
-      "schedule": "0 * * * *"
+      "schedule": "0 */12 * * *"
     }
   ]
 }

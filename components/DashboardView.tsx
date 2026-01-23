@@ -242,14 +242,6 @@ export default function DashboardView({
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
               Talent Composition
             </p>
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-4xl font-black text-slate-800">
-                {totalTalents}
-              </h3>
-              <span className="text-xs font-bold text-slate-400 uppercase">
-                Total
-              </span>
-            </div>
           </div>
           {/* BAGIAN KANAN: BARIS PROGRESS (2 KOLOM RAPI) */}
           <div className="flex-1 pl-10">

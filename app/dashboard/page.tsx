@@ -35,6 +35,9 @@ interface Talent {
   monthlyImpressions?: number[];
   tier: string;
   last_update?: string;
+  email?: string;
+  hijab?: string;
+  gender?: string;
 }
 
 export default function Page() {
@@ -56,7 +59,25 @@ export default function Page() {
   const API_URL = "/API/Talent";
 
   // 1. Tambahkan state untuk Sorting di bagian atas komponen
-  const [sortBy, setSortBy] = useState("name-asc"); // Default A-Z
+  const [sortBy, setSortBy] = useState("update-desc"); 
+
+  const getTimestamp = (dateString?: string) => {
+  if (!dateString || dateString === "null" || dateString === "") return 0;
+  try {
+    const parts = dateString.split("-");
+    if (parts.length === 3) {
+      const day = parts[0];
+      const month = parts[1];
+      const yearWithTime = parts[2]; 
+      // Susun ke format ISO: YYYY-MM-DDTHH:mm:ss
+      const isoFormat = `${yearWithTime.split(" ")[0]}-${month}-${day}T${yearWithTime.split(" ")[1]}`;
+      return new Date(isoFormat).getTime();
+    }
+    return new Date(dateString).getTime(); // Fallback buat format ISO
+  } catch (e) {
+    return 0;
+  }
+};
 
   // 2. Logika Filtering & Sorting yang Digabung
   const filteredAndSortedTalents = talents
@@ -93,26 +114,43 @@ export default function Page() {
         matchSearch && matchReligion && matchStatus && matchTier && matchAge
       );
     })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "rate-high":
-          return b.rateCard - a.rateCard; // Sudah angka dari mappedData
-        case "rate-low":
-          return a.rateCard - b.rateCard;
-        case "followers-high":
-          return b.totalFollowers - a.totalFollowers; // Gunakan totalFollowers dari mappedData
-        case "name-asc":
-          return a.name.localeCompare(b.name);
-        case "name-desc":
-          return b.name.localeCompare(a.name);
-        case "age-old":
-          return parseInt(b.umur) - parseInt(a.umur); // Umur di mappedData masih string
-        case "age-young":
-          return parseInt(a.umur) - parseInt(b.umur);
-        default:
-          return 0;
+.sort((a, b) => {
+  // 1. Pecah dulu, misal "igFollowers-desc" jadi field="igFollowers" & order="desc"
+  const [field, order] = sortBy.split("-");
+  const isAsc = order === "asc";
+
+  // 2. Gunakan 'field' di dalam switch, bukan 'sortBy'
+  switch (field) {
+    case "last_update":
+    case "update": // Tambahkan case ini jika di header lo pake 'update'
+      const timeA = getTimestamp(a.last_update);
+      const timeB = getTimestamp(b.last_update);
+      return isAsc ? timeA - timeB : timeB - timeA;
+
+    case "name":
+      return isAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+
+    case "igFollowers":
+      // Pastikan convert ke Number biar aman
+      const followersA = Number(a.igFollowers) || 0;
+      const followersB = Number(b.igFollowers) || 0;
+      return isAsc ? followersA - followersB : followersB - followersA;
+
+    case "tier":
+      const tierWeight: any = { Mega: 4, Macro: 3, Micro: 2, Nano: 1 };
+      const weightA = tierWeight[a.tier] || 0;
+      const weightB = tierWeight[b.tier] || 0;
+      return isAsc ? weightA - weightB : weightB - weightA;
+
+    default:
+      // Fallback: Jika sortBy isinya "update-desc" tapi gak masuk case atas
+      if (sortBy === "update-desc") {
+        return getTimestamp(b.last_update) - getTimestamp(a.last_update);
       }
-    });
+      return 0;
+  }
+})
+
 
   const getTalents = async () => {
     const res = await fetch("/API/Talent");
@@ -148,7 +186,7 @@ export default function Page() {
     return res.json();
   };
 
-  // 1. FUNGSI LOAD DATA (Sudah diperbaiki strukturnya)
+  // 1. FUNGSI LOAD DATA
   const loadTalents = async () => {
     try {
       setIsLoading(true);
@@ -184,6 +222,9 @@ export default function Page() {
             youtube_subscriber: t.youtube_subscriber,
             youtube_username: t.youtube_username || "",
             last_update: t.last_update,
+            email: t.email || "-",
+            hijab: t.hijab || "no",
+            gender: t.gender || "-",
           };
         });
         setTalents(mappedData);
@@ -194,6 +235,30 @@ export default function Page() {
       setIsLoading(false);
     }
   };
+
+  const handleRefresh = async () => {
+  try {
+    setIsLoading(true);
+    // 1. Reset sorting ke update terbaru (Descending)
+    setSortBy("last_update-desc");
+    
+    // 2. Reset filters (Opsional, tapi bagus biar data murni kelihatan)
+    setSearchTerm("");
+    setSelectedCategory("All");
+    setSelectedReligion("All");
+    setSelectedStatus("All");
+    setSelectedTier("All");
+    setSelectedAgeRange("All");
+
+    // 3. Ambil data ulang dari API
+    await loadTalents();
+    
+  } catch (error) {
+    console.error("Refresh Error:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   useEffect(() => {
     loadTalents();
@@ -226,6 +291,9 @@ export default function Page() {
         status: formData.status.toLowerCase(),
         tier: formData.tier,
         last_update: new Date().toISOString(),
+        email: formData.email,
+        hijab: formData.hijab,
+        gender: formData.gender,
       };
 
       if (talentToEdit) {
@@ -245,24 +313,17 @@ export default function Page() {
   };
 
   // 3. FUNGSI DELETE
-  const handleDeleteTalent = async (id: number) => {
-    if (
-      window.confirm(
-        "Apakah Anda yakin ingin menghapus talent ini secara permanen?",
-      )
-    ) {
-      try {
-        setIsLoading(true);
-        await deleteTalent(id);
-        alert("Talent berhasil dihapus!");
-        await loadTalents();
-      } catch (error: any) {
-        alert("Gagal menghapus: " + error.message);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
+const handleDeleteTalent = async (id: number) => {
+  try {
+    setIsLoading(true);
+    await deleteTalent(id);
+    await loadTalents();
+  } catch (error: any) {
+  } finally {
+    setIsLoading(false);
+    // Reset state di TalentView akan ditangani via onClose modal
+  }
+};
 
   const handleOpenEdit = (talent: any) => {
     setTalentToEdit(talent);
@@ -416,6 +477,8 @@ export default function Page() {
                   onAddClick={() => setIsModalOpen(true)}
                   onDelete={handleDeleteTalent}
                   onUpdate={handleOpenEdit}
+                  onRefresh={handleRefresh}
+      isLoading={isLoading}
                   sortBy={sortBy}
                   setSortBy={setSortBy}
                   selectedReligion={selectedReligion}

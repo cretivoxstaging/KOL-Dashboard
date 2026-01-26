@@ -12,6 +12,10 @@ import TaxCalculatorView from "../../components/TaxCalculatorView";
 interface Talent {
   id: number;
   name: string;
+  tier_ig?: string; // Baru
+  tier_tiktok?: string; // Baru
+  er?: string; // Baru
+  source?: string;
   domisili: string;
   igAccount: string;
   igFollowers: number;
@@ -59,25 +63,25 @@ export default function Page() {
   const API_URL = "/API/Talent";
 
   // 1. Tambahkan state untuk Sorting di bagian atas komponen
-  const [sortBy, setSortBy] = useState("update-desc"); 
+  const [sortBy, setSortBy] = useState("update-desc");
 
   const getTimestamp = (dateString?: string) => {
-  if (!dateString || dateString === "null" || dateString === "") return 0;
-  try {
-    const parts = dateString.split("-");
-    if (parts.length === 3) {
-      const day = parts[0];
-      const month = parts[1];
-      const yearWithTime = parts[2]; 
-      // Susun ke format ISO: YYYY-MM-DDTHH:mm:ss
-      const isoFormat = `${yearWithTime.split(" ")[0]}-${month}-${day}T${yearWithTime.split(" ")[1]}`;
-      return new Date(isoFormat).getTime();
+    if (!dateString || dateString === "null" || dateString === "") return 0;
+    try {
+      const parts = dateString.split("-");
+      if (parts.length === 3) {
+        const day = parts[0];
+        const month = parts[1];
+        const yearWithTime = parts[2];
+        // Susun ke format ISO: YYYY-MM-DDTHH:mm:ss
+        const isoFormat = `${yearWithTime.split(" ")[0]}-${month}-${day}T${yearWithTime.split(" ")[1]}`;
+        return new Date(isoFormat).getTime();
+      }
+      return new Date(dateString).getTime(); // Fallback buat format ISO
+    } catch (e) {
+      return 0;
     }
-    return new Date(dateString).getTime(); // Fallback buat format ISO
-  } catch (e) {
-    return 0;
-  }
-};
+  };
 
   // 2. Logika Filtering & Sorting yang Digabung
   const filteredAndSortedTalents = talents
@@ -114,43 +118,44 @@ export default function Page() {
         matchSearch && matchReligion && matchStatus && matchTier && matchAge
       );
     })
-.sort((a, b) => {
-  // 1. Pecah dulu, misal "igFollowers-desc" jadi field="igFollowers" & order="desc"
-  const [field, order] = sortBy.split("-");
-  const isAsc = order === "asc";
+    .sort((a, b) => {
+      // 1. Pecah dulu, misal "igFollowers-desc" jadi field="igFollowers" & order="desc"
+      const [field, order] = sortBy.split("-");
+      const isAsc = order === "asc";
 
-  // 2. Gunakan 'field' di dalam switch, bukan 'sortBy'
-  switch (field) {
-    case "last_update":
-    case "update": // Tambahkan case ini jika di header lo pake 'update'
-      const timeA = getTimestamp(a.last_update);
-      const timeB = getTimestamp(b.last_update);
-      return isAsc ? timeA - timeB : timeB - timeA;
+      // 2. Gunakan 'field' di dalam switch, bukan 'sortBy'
+      switch (field) {
+        case "last_update":
+        case "update": // Tambahkan case ini jika di header lo pake 'update'
+          const timeA = getTimestamp(a.last_update);
+          const timeB = getTimestamp(b.last_update);
+          return isAsc ? timeA - timeB : timeB - timeA;
 
-    case "name":
-      return isAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+        case "name":
+          return isAsc
+            ? a.name.localeCompare(b.name)
+            : b.name.localeCompare(a.name);
 
-    case "igFollowers":
-      // Pastikan convert ke Number biar aman
-      const followersA = Number(a.igFollowers) || 0;
-      const followersB = Number(b.igFollowers) || 0;
-      return isAsc ? followersA - followersB : followersB - followersA;
+        case "igFollowers":
+          // Pastikan convert ke Number biar aman
+          const followersA = Number(a.igFollowers) || 0;
+          const followersB = Number(b.igFollowers) || 0;
+          return isAsc ? followersA - followersB : followersB - followersA;
 
-    case "tier":
-      const tierWeight: any = { Mega: 4, Macro: 3, Micro: 2, Nano: 1 };
-      const weightA = tierWeight[a.tier] || 0;
-      const weightB = tierWeight[b.tier] || 0;
-      return isAsc ? weightA - weightB : weightB - weightA;
+        case "tier":
+          const tierWeight: any = { Mega: 4, Macro: 3, Micro: 2, Nano: 1 };
+          const weightA = tierWeight[a.tier] || 0;
+          const weightB = tierWeight[b.tier] || 0;
+          return isAsc ? weightA - weightB : weightB - weightA;
 
-    default:
-      // Fallback: Jika sortBy isinya "update-desc" tapi gak masuk case atas
-      if (sortBy === "update-desc") {
-        return getTimestamp(b.last_update) - getTimestamp(a.last_update);
+        default:
+          // Fallback: Jika sortBy isinya "update-desc" tapi gak masuk case atas
+          if (sortBy === "update-desc") {
+            return getTimestamp(b.last_update) - getTimestamp(a.last_update);
+          }
+          return 0;
       }
-      return 0;
-  }
-})
-
+    });
 
   const getTalents = async () => {
     const res = await fetch("/API/Talent");
@@ -195,6 +200,12 @@ export default function Page() {
         const mappedData = result.data.map((t: any) => {
           const ig = parseInt(t.instagram_followers) || 0;
           const tt = parseInt(t.tiktok_followers) || 0;
+          const getTier = (foll: number) => {
+            if (foll >= 1000000) return "Mega";
+            if (foll >= 100000) return "Macro";
+            if (foll >= 10000) return "Micro";
+            return "Nano";
+          };
           return {
             id: t.id,
             name: t.name,
@@ -218,7 +229,10 @@ export default function Page() {
             monthlyImpressions: t.monthly_impressions || [
               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ],
-            tier: t.tier || "Nano",
+            tier_ig: t.tier_ig || "Nano",
+            tier_tiktok: getTier(tt),
+            er: t.er || "0%",
+            source: t.source || "-",
             youtube_subscriber: t.youtube_subscriber,
             youtube_username: t.youtube_username || "",
             last_update: t.last_update,
@@ -237,28 +251,27 @@ export default function Page() {
   };
 
   const handleRefresh = async () => {
-  try {
-    setIsLoading(true);
-    // 1. Reset sorting ke update terbaru (Descending)
-    setSortBy("last_update-desc");
-    
-    // 2. Reset filters (Opsional, tapi bagus biar data murni kelihatan)
-    setSearchTerm("");
-    setSelectedCategory("All");
-    setSelectedReligion("All");
-    setSelectedStatus("All");
-    setSelectedTier("All");
-    setSelectedAgeRange("All");
+    try {
+      setIsLoading(true);
+      // 1. Reset sorting ke update terbaru (Descending)
+      setSortBy("last_update-desc");
 
-    // 3. Ambil data ulang dari API
-    await loadTalents();
-    
-  } catch (error) {
-    console.error("Refresh Error:", error);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      // 2. Reset filters (Opsional, tapi bagus biar data murni kelihatan)
+      setSearchTerm("");
+      setSelectedCategory("All");
+      setSelectedReligion("All");
+      setSelectedStatus("All");
+      setSelectedTier("All");
+      setSelectedAgeRange("All");
+
+      // 3. Ambil data ulang dari API
+      await loadTalents();
+    } catch (error) {
+      console.error("Refresh Error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadTalents();
@@ -268,15 +281,37 @@ export default function Page() {
   const handleSaveTalent = async (formData: any) => {
     try {
       setIsLoading(true);
+
+      let currentFollowers = formData.igFollowers;
+      let currentTier = formData.tier_ig;
+
+      // OTOMATISASI: Jika nambah talent baru dan ada username IG,
+      // kita tarik followers asli via RapidAPI dulu sebelum simpan ke DB
+      if (!talentToEdit && formData.igAccount && formData.igAccount !== "-") {
+        try {
+          const username = formData.igAccount.replace("@", "").trim();
+          const resIg = await fetch(`/API/instagram?username=${username}`);
+          const dataIg = await resIg.json();
+
+          if (dataIg.success) {
+            currentFollowers = dataIg.followers;
+            currentTier = dataIg.tier;
+            console.log("Auto-sync IG Success:", dataIg.followers);
+          }
+        } catch (err) {
+          console.warn("Auto-sync IG failed, using manual input instead.");
+        }
+      }
+
       const payload = {
         name: formData.name,
         domicile: formData.domisili,
         instagram_username: formData.igAccount,
-        instagram_followers: String(formData.igFollowers),
+        instagram_followers: String(currentFollowers || "0"),
         tiktok_username: formData.tiktokAccount,
-        tiktok_followers: String(formData.tiktokFollowers),
+        tiktok_followers: String(formData.tiktokFollowers || "0"),
         youtube_username: formData.youtube_username,
-        youtube_subscriber: String(formData.youtube_subscriber),
+        youtube_subscriber: String(formData.youtube_subscriber || "0"),
         contact_person: formData.contactPerson,
         ethnicity: formData.suku,
         religion: formData.agama,
@@ -287,9 +322,13 @@ export default function Page() {
         zodiac: formData.zodiac,
         university: formData.tempatKuliah,
         category: formData.category,
-        rate_card: String(formData.rateCard),
+        rate_card: String(formData.rateCard || "0"),
         status: formData.status.toLowerCase(),
-        tier: formData.tier,
+        tier_ig: currentTier,
+        tier_tiktok: formData.tier_tiktok,
+        er: formData.er,
+        source: talentToEdit ? formData.source : "RapidAPI", // Tandai sumbernya
+        tier: currentTier,
         last_update: new Date().toISOString(),
         email: formData.email,
         hijab: formData.hijab,
@@ -302,28 +341,28 @@ export default function Page() {
         await createTalent(payload);
       }
 
-      await loadTalents();
+      await loadTalents(); // Refresh tabel
       setIsModalOpen(false);
       setTalentToEdit(null);
     } catch (error: any) {
-      alert("Terjadi kesalahan: " + error.message);
+      alert("Gagal menyimpan: " + error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   // 3. FUNGSI DELETE
-const handleDeleteTalent = async (id: number) => {
-  try {
-    setIsLoading(true);
-    await deleteTalent(id);
-    await loadTalents();
-  } catch (error: any) {
-  } finally {
-    setIsLoading(false);
-    // Reset state di TalentView akan ditangani via onClose modal
-  }
-};
+  const handleDeleteTalent = async (id: number) => {
+    try {
+      setIsLoading(true);
+      await deleteTalent(id);
+      await loadTalents();
+    } catch (error: any) {
+    } finally {
+      setIsLoading(false);
+      // Reset state di TalentView akan ditangani via onClose modal
+    }
+  };
 
   const handleOpenEdit = (talent: any) => {
     setTalentToEdit(talent);
@@ -454,9 +493,7 @@ const handleDeleteTalent = async (id: number) => {
         {isLoading ? (
           <div className="flex flex-col h-full items-center justify-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1B3A5B]"></div>
-            <p className="text-slate-500 font-medium animate-pulse">
-              Fetching data...
-            </p>
+            <p className="text-slate-500 font-medium animate-pulse">Loading</p>
           </div>
         ) : (
           <>
@@ -478,7 +515,7 @@ const handleDeleteTalent = async (id: number) => {
                   onDelete={handleDeleteTalent}
                   onUpdate={handleOpenEdit}
                   onRefresh={handleRefresh}
-      isLoading={isLoading}
+                  isLoading={isLoading}
                   sortBy={sortBy}
                   setSortBy={setSortBy}
                   selectedReligion={selectedReligion}

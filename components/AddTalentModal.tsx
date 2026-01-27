@@ -29,7 +29,10 @@ export default function AddTalentModal({
     status: "Active",
     tempatKuliah: "",
     category: "Beauty",
-    tier: "Nano",
+    tier_ig: "Nano",
+    tier_tiktok: "Nano",
+    er: "0%",
+    source: "Manual",
     color: "#1B4D66",
     monthlyImpressions: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     rateCard: "",
@@ -50,19 +53,29 @@ export default function AddTalentModal({
     "Other",
   ];
 
+  const calculateTier = (followers: number) => {
+    if (followers >= 1000000) return "Mega";
+    if (followers >= 100000) return "Macro";
+    if (followers >= 10000) return "Micro";
+    return "Nano";
+  };
+
   useEffect(() => {
     if (initialData) {
       setFormData({
         ...initialData,
-        tier: initialData.tier || "Nano",
+        tier_ig: initialData.tier_ig || initialData.tier || "Nano",
+        tier_tiktok: initialData.tier_tiktok || "Nano",
+        er: initialData.er || "0%",
+        source: initialData.source || "Manual",
         domisili: initialData.domisili || "",
         igAccount: initialData.igAccount || "",
         status: initialData.status || "Active",
         youtube_username: initialData.youtube_username || "",
         youtube_subscriber: initialData.youtube_subscriber ?? "",
         email: initialData.email || "",
-      hijab: initialData.hijab || "no", 
-      gender: initialData.gender || "", 
+        hijab: initialData.hijab || "no",
+        gender: initialData.gender || "",
       });
     }
   }, [initialData]);
@@ -181,41 +194,45 @@ export default function AddTalentModal({
                 }
               />
               <Input
-    label="Email Address"
-    type="email"
-    value={formData.email}
-    placeholder="talent@example.com"
-    onChange={(v: string) => setFormData({ ...formData, email: v })}
-  />
-  
-  <div className="space-y-2">
-    <label className="text-xs font-bold text-slate-500 uppercase">
-      Gender
-    </label>
-    <select
-      className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
-      value={formData.gender}
-      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-    >
-      <option value="">Select Gender</option>
-      <option value="Laki-laki">Laki-laki</option>
-      <option value="Perempuan">Perempuan</option>
-    </select>
-  </div>
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                placeholder="talent@example.com"
+                onChange={(v: string) => setFormData({ ...formData, email: v })}
+              />
 
-  <div className="space-y-2">
-    <label className="text-xs font-bold text-slate-500 uppercase">
-      Hijab Status
-    </label>
-    <select
-      className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
-      value={formData.hijab}
-      onChange={(e) => setFormData({ ...formData, hijab: e.target.value })}
-    >
-      <option value="no">No</option>
-      <option value="yes">Yes</option>
-    </select>
-  </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase">
+                  Gender
+                </label>
+                <select
+                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
+                  value={formData.gender}
+                  onChange={(e) =>
+                    setFormData({ ...formData, gender: e.target.value })
+                  }
+                >
+                  <option value="">Select Gender</option>
+                  <option value="Laki-laki">Laki-laki</option>
+                  <option value="Perempuan">Perempuan</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase">
+                  Hijab Status
+                </label>
+                <select
+                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
+                  value={formData.hijab}
+                  onChange={(e) =>
+                    setFormData({ ...formData, hijab: e.target.value })
+                  }
+                >
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </select>
+              </div>
             </div>
           </section>
 
@@ -335,13 +352,19 @@ export default function AddTalentModal({
                 onChange={(v: string) => {
                   const val = v === "" ? "" : parseInt(v);
                   const numForTier = typeof val === "number" ? val : 0;
+
+                  // Gunakan Macro & Micro (pake 'c') biar sinkron sama CSS/styling
                   let newTier = "Nano";
                   if (numForTier >= 1000000) newTier = "Mega";
-                  else if (numForTier >= 100000) newTier = "Makro";
-                  else if (numForTier >= 10000) newTier = "Mikro";
+                  else if (numForTier >= 100000) newTier = "Macro";
+                  else if (numForTier >= 10000) newTier = "Micro";
                   else if (numForTier >= 1000) newTier = "Nano";
 
-                  setFormData({ ...formData, igFollowers: val, tier: newTier });
+                  setFormData({
+                    ...formData,
+                    igFollowers: val,
+                    tier_ig: newTier,
+                  });
                 }}
               />
 
@@ -358,12 +381,17 @@ export default function AddTalentModal({
                 type="number"
                 value={formData.tiktokFollowers}
                 placeholder="50000"
-                onChange={(v: string) =>
+                onChange={(v: string) => {
+                  const val = v === "" ? "" : parseInt(v);
+                  const numForTier = typeof val === "number" ? val : 0;
+                  const newTier = calculateTier(numForTier); 
+
                   setFormData({
                     ...formData,
-                    tiktokFollowers: v === "" ? "" : parseInt(v),
-                  })
-                }
+                    tiktokFollowers: val,
+                    tier_tiktok: newTier, 
+                  });
+                }}
               />
               <Input
                 label="YouTube Username"
@@ -391,6 +419,20 @@ export default function AddTalentModal({
                 placeholder="0812..."
                 onChange={(v: string) =>
                   setFormData({ ...formData, contactPerson: v })
+                }
+              />
+              <Input
+                label="Engagement Rate (ER)"
+                value={formData.er}
+                placeholder="2.5%"
+                onChange={(v: string) => setFormData({ ...formData, er: v })}
+              />
+              <Input
+                label="Source Data"
+                value={formData.source}
+                placeholder="Cretivox / Agency / Manual"
+                onChange={(v: string) =>
+                  setFormData({ ...formData, source: v })
                 }
               />
               <div className="space-y-2">
@@ -424,7 +466,7 @@ export default function AddTalentModal({
                   Calculated Tier
                 </label>
                 <div className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-[#1B3A5B]">
-                  {formData.tier}
+                  {formData.tier_ig}
                 </div>
               </div>
             </div>

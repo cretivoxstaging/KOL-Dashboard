@@ -103,6 +103,11 @@ export default function TalentView({
   const [talentToDelete, setTalentToDelete] = useState<Talent | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [selectedSource, setSelectedSource] = useState("All");
+  const [importProgress, setImportProgress] = useState({
+    current: 0,
+    total: 0,
+  });
+  const [showProgress, setShowProgress] = useState(false);
 
   useEffect(() => {
     if (selectedDetail) {
@@ -159,37 +164,17 @@ export default function TalentView({
     return "Nano";
   };
 
-const handleRealTimeRefresh = async () => {
-  if (!filteredTalent || filteredTalent.length === 0) return;
-
-  const confirmRefresh = confirm(`Update real-time ${filteredTalent.length} talent?`);
-  if (!confirmRefresh) return;
-
-  console.log("Memulai Sinkronisasi Real-time...");
-
-  for (const talent of filteredTalent) {
-    if (!talent.igAccount || talent.igAccount === "-") continue;
+  const handleRealTimeRefresh = async () => {
+    console.log("Memperbarui tampilan tabel dari database...");
 
     try {
-      const username = talent.igAccount.replace("@", "").trim();
-      // 1. Tembak API
-      const res = await fetch(`/API/instagram?username=${username}&id=${talent.id}`);
-      const data = await res.json();
-      
-      if (data.success) {
-        console.log(`✅ @${username} updated: ${data.followers}`);
-        onRefresh(); 
-      } else {
-        console.warn(`⚠️ @${username}: ${data.error}`);
-      }
-      
-      await new Promise(r => setTimeout(r, 2000));
+      await onRefresh();
+      console.log("Data tabel berhasil disinkronkan dengan database pusat.");
     } catch (err) {
-      console.error(`❌ Gagal update @${talent.igAccount}`);
+      console.error("Gagal merefresh tabel:", err);
     }
-  }
+  };
 
-};
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -200,32 +185,79 @@ const handleRealTimeRefresh = async () => {
         const bstr = event.target?.result;
         const wb = XLSX.read(bstr, { type: "binary" });
         const ws = wb.Sheets[wb.SheetNames[0]];
-
-        // Pakai range: 1 karena header lo ada di baris ke-2
         const rawData: any[] = XLSX.utils.sheet_to_json(ws, { range: 1 });
-
-        // Filter
         const cleanData = rawData.filter((row) => row["Name"]);
 
         if (cleanData.length === 0)
-          return alert("Header 'Name' tidak ditemukan atau file kosong!");
-        if (!confirm(`Yakin mau import ${cleanData.length} talent?`)) return;
+          return alert("File kosong atau format salah!");
 
-        for (const row of cleanData) {
-          // Helper biar followers gak rusak
-          const cleanNum = (v: any) => {
-            if (!v || v === "-" || v === "N/A") return ""; // Samain dengan manual Add ("")
-            return String(v).replace(/\D/g, "");
-          };
+        // 1. Tampilkan Progress
+        setShowProgress(true);
+        setImportProgress({ current: 0, total: cleanData.length });
 
+        for (let i = 0; i < cleanData.length; i++) {
+          const row = cleanData[i];
+
+          // Update angka progress di UI
+          setImportProgress((prev) => ({ current: i + 1, total: cleanData.length }));
+
+          // Ambil data dasar dari Excel
+          let igUser = String(row["Username_Instagram"] || "")
+            .replace("@", "")
+            .trim();
+          let ttUser = String(row["Username_Tiktok"] || "")
+            .replace("@", "")
+            .trim();
+
+          let finalIgFollowers = String(
+            row["Followers_Instagram"] || "",
+          ).replace(/\D/g, "");
+          let finalTtFollowers = String(row["Followers_Tiktok"] || "").replace(
+            /\D/g,
+            "",
+          );
+          let finalER = "0.00%";
+          let finalTier = String(row["Tier"] || "Nano");
+          let currentUsedProvider = "Direct Excel"; // Default info
+
+          // --- 2. TEMBAK API INSTAGRAM (Real-time) ---
+          if (igUser && igUser !== "-") {
+            try {
+              const resIg = await fetch(`/API/instagram?username=${igUser}`);
+              const dataIg = await resIg.json();
+              if (dataIg.success) {
+                finalIgFollowers = String(dataIg.followers);
+                finalER = dataIg.er;
+                finalTier = dataIg.tier;
+              }
+            } catch (err) {
+              console.error("IG Sync Fail:", igUser);
+            }
+          }
+
+          // --- 3. TEMBAK API TIKTOK (Real-time) ---
+          if (ttUser && ttUser !== "-") {
+            try {
+              const resTt = await fetch(`/API/tiktok?username=${ttUser}`);
+              const dataTt = await resTt.json();
+              if (dataTt.success) {
+                finalTtFollowers = String(dataTt.followers);
+                // Kita ambil nama provider dari API biar muncul di UI Notifikasi
+                currentUsedProvider = dataTt.provider;
+              }
+            } catch (err) {
+              console.error("TikTok Sync Fail:", ttUser);
+            }
+          }
+
+          // 4. KIRIM KE DATABASE
           const payload = {
-            // Kunci-kunci ini HARUS sama persis dengan yang di handleSaveTalent (Page.tsx)
             name: String(row["Name"] || ""),
             domicile: "-",
-            instagram_username: String(row["Username_Instagram"] || ""),
-            instagram_followers: cleanNum(row["Followers_Instagram"]),
-            tiktok_username: String(row["Username_Tiktok"] || "-"),
-            tiktok_followers: cleanNum(row["Followers_Tiktok"]),
+            instagram_username: igUser ? `@${igUser}` : "-",
+            instagram_followers: finalIgFollowers,
+            tiktok_username: ttUser ? `@${ttUser}` : "-",
+            tiktok_followers: finalTtFollowers,
             youtube_username: "-",
             youtube_subscriber: "",
             contact_person: String(row["Phone Number"] || ""),
@@ -240,7 +272,8 @@ const handleRealTimeRefresh = async () => {
             category: String(row["Category"] || "Beauty"),
             rate_card: "",
             status: "active",
-            tier: String(row["Tier"] || "Nano"),
+            tier: finalTier,
+            er: finalER,
             last_update: new Date().toISOString(),
             email: String(row["Email"] || "-"),
             hijab: String(row["Hijab/Non"] || "no")
@@ -249,24 +282,27 @@ const handleRealTimeRefresh = async () => {
               ? "no"
               : "yes",
             gender: String(row["Gender"] || "-"),
+            source: `Import + ${currentUsedProvider}`, // Keterangan provider masuk ke DB
           };
-
-          console.log("Kirim payload import:", payload);
 
           await fetch("/API/Talent", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
+
+          // Delay 1.2 detik biar Failover-nya kerasa dan aman dari Rate Limit
+          await new Promise((r) => setTimeout(r, 1200));
         }
 
-        alert(`Beres! ${cleanData.length} data sukses diproses.`);
-        onRefresh(); // Supaya Page.tsx narik data terbaru ke tabel
+        alert(`Sukses Import & Sync ${cleanData.length} talent!`);
+        onRefresh();
       } catch (err) {
         console.error(err);
-        alert("Format file salah atau sistem error.");
+        alert("Error saat import.");
       } finally {
-        // setIsImporting(false);
+        // Notifikasi hilang otomatis setelah 3 detik selesai
+        setTimeout(() => setShowProgress(false), 3000);
       }
     };
     reader.readAsBinaryString(file);
@@ -290,26 +326,30 @@ const handleRealTimeRefresh = async () => {
     }));
 
     const handleSyncInstagram = async (talent: Talent) => {
-  try {
-    // 1. Ambil username tanpa @
-    const username = talent.igAccount.replace("@", "");
-    
-    // 2. Tembak API Route Backend
-    const res = await fetch(`/API/instagram?username=${username}&id=${talent.id}`);
-    const data = await res.json();
+      try {
+        // 1. Ambil username tanpa @
+        const username = talent.igAccount.replace("@", "");
 
-    if (data.success) {
-      // 3. Panggil onRefresh (fungsi dari Page.tsx) untuk menarik data terbaru dari DB ke Tabel
-      onRefresh(); 
-      alert(`Berhasil sinkronisasi @${username}! Followers: ${data.followers.toLocaleString()}`);
-    } else {
-      alert("Gagal sinkronisasi: " + (data.error || "Unknown error"));
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Terjadi kesalahan koneksi.");
-  }
-};
+        // 2. Tembak API Route Backend
+        const res = await fetch(
+          `/API/instagram?username=${username}&id=${talent.id}`,
+        );
+        const data = await res.json();
+
+        if (data.success) {
+          // 3. Panggil onRefresh (fungsi dari Page.tsx) untuk menarik data terbaru dari DB ke Tabel
+          onRefresh();
+          alert(
+            `Berhasil sinkronisasi @${username}! Followers: ${data.followers.toLocaleString()}`,
+          );
+        } else {
+          alert("Gagal sinkronisasi: " + (data.error || "Unknown error"));
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Terjadi kesalahan koneksi.");
+      }
+    };
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
 
@@ -341,7 +381,7 @@ const handleRealTimeRefresh = async () => {
     selectedAgeRange !== "All" ||
     selectedStatus !== "All" ||
     selectedCategory !== "All";
-    selectedSource !== "All";
+  selectedSource !== "All";
 
   // Hitung indeks data
   const indexOfLastItem = currentPage * rowsPerPage;
@@ -430,10 +470,7 @@ const handleRealTimeRefresh = async () => {
               placeholder="All Source"
               value={selectedSource}
               onChange={setSelectedReligion}
-              options={[
-
-                "Instagram",
-              ]}
+              options={["Instagram"]}
             />
             <FilterSelect
               placeholder="All Religion"
@@ -564,7 +601,7 @@ const handleRealTimeRefresh = async () => {
               />
               <SortableHeader
                 label="Followers Tiktok"
-                field="igFollowers"
+                field="tiktokFollowers"
                 currentSort={sortBy}
                 onSort={setSortBy}
                 align="center"
@@ -599,209 +636,260 @@ const handleRealTimeRefresh = async () => {
         </table>
       </div>
 
-{/* ================= MODAL DETAIL POP-UP ================= */}
-{selectedDetail && (
-  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
-    <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide">
-      {/* HEADER MODAL */}
-      <div className="flex justify-between items-start mb-8">
-        <div className="flex gap-4">
-          <div className="w-20 h-20 rounded-2xl bg-[#1B3A5B] flex items-center justify-center text-3xl font-bold text-white uppercase shadow-lg shadow-[#1B3A5B]/20">
-            {selectedDetail.name[0]}
-          </div>
-          <div>
-            <h3 className="text-2xl font-black text-[#1B3A5B] mb-1">
-              {selectedDetail.name}
-            </h3>
-            <div className="flex items-center gap-1.5 mt-2 text-slate-400">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-slate-100 text-[#1B3A5B] text-[10px] font-bold rounded-md uppercase tracking-wider">
-                  {selectedDetail.category}
-                </span>
-                <span
-                  className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${
-                    selectedDetail.status === "Active"
-                      ? "bg-green-100 text-green-600"
-                      : "bg-orange-100 text-orange-600"
-                  }`}
+      {/* ================= MODAL DETAIL POP-UP ================= */}
+      {selectedDetail && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide">
+            {/* HEADER MODAL */}
+            <div className="flex justify-between items-start mb-8">
+              <div className="flex gap-4">
+                <div className="w-20 h-20 rounded-2xl bg-[#1B3A5B] flex items-center justify-center text-3xl font-bold text-white uppercase shadow-lg shadow-[#1B3A5B]/20">
+                  {selectedDetail.name[0]}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-[#1B3A5B] mb-1">
+                    {selectedDetail.name}
+                  </h3>
+                  <div className="flex items-center gap-1.5 mt-2 text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-slate-100 text-[#1B3A5B] text-[10px] font-bold rounded-md uppercase tracking-wider">
+                        {selectedDetail.category}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${
+                          selectedDetail.status === "Active"
+                            ? "bg-green-100 text-green-600"
+                            : "bg-orange-100 text-orange-600"
+                        }`}
+                      >
+                        {selectedDetail.status}
+                      </span>
+                      <Clock size={12} />
+                      <span className="text-[10px] font-medium">
+                        Last updated: {formatDate(selectedDetail.last_update)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedDetail(null)}
+                className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+              >
+                <Plus size={24} className="rotate-45" />
+              </button>
+            </div>
+
+            {/* BODY MODAL: GRID 2 KOLOM */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+              {/* KOLOM KIRI: PERSONAL INFO */}
+              <div className="space-y-5">
+                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                  Personal Information
+                </h4>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">
+                      Contact Person
+                    </p>
+                    {selectedDetail.contactPerson ? (
+                      <a
+                        href={`https://wa.me/${selectedDetail.contactPerson.replace(/[^0-9]/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold text-green-600 hover:text-green-700 flex items-center gap-1 hover:underline"
+                      >
+                        <svg
+                          className="w-3 h-3"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.937 3.672 1.43 5.661 1.43h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                        </svg>
+                        {selectedDetail.contactPerson}
+                      </a>
+                    ) : (
+                      <p className="text-xs font-bold text-slate-300">-</p>
+                    )}
+                  </div>
+                  {/* TIER CLASS SUDAH DIHAPUS DARI SINI */}
+                  <DetailItem
+                    label="Age"
+                    value={`${selectedDetail.umur} Years Old`}
+                  />
+                  <DetailItem label="Ethnicity" value={selectedDetail.suku} />
+                  <DetailItem label="Religion" value={selectedDetail.agama} />
+                  <DetailItem label="Zodiac" value={selectedDetail.zodiac} />
+                  <DetailItem label="Hobby" value={selectedDetail.hobby} />
+                  <DetailItem
+                    label="Occupation"
+                    value={selectedDetail.pekerjaan}
+                  />
+                  <DetailItem
+                    label="Education"
+                    value={selectedDetail.tempatKuliah}
+                  />
+                  <DetailItem
+                    label="Domisili / Location"
+                    value={selectedDetail.domisili}
+                  />
+                  <DetailItem
+                    label="Gender"
+                    value={selectedDetail.gender || "-"}
+                  />
+                  <DetailItem
+                    label="Hijab Status"
+                    value={
+                      selectedDetail.hijab === "yes" ? "Hijab" : "Non-Hijab"
+                    }
+                  />
+                  <DetailItem
+                    label="Engagement Rate"
+                    value={selectedDetail.er || "-"}
+                  />
+                </div>
+              </div>
+
+              {/* KOLOM KANAN: BUSINESS & SOCIALS */}
+              <div className="space-y-5">
+                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                  Social Media & Business
+                </h4>
+
+                {/* SOCIAL LINKS */}
+                <div className="space-y-4">
+                  {/* INSTAGRAM CARD */}
+                  <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md uppercase tracking-tighter">
+                      {selectedDetail.tier_ig || "Nano"}
+                    </div>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
+                      Instagram Profile
+                    </p>
+                    <a
+                      href={`https://instagram.com/${selectedDetail.igAccount.replace("@", "")}`}
+                      target="_blank"
+                      className="text-sm font-bold text-blue-600 flex items-center gap-2 hover:underline"
+                    >
+                      <Instagram size={16} /> {selectedDetail.igAccount}
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        ({selectedDetail.igFollowers.toLocaleString()}{" "}
+                        followers)
+                      </span>
+                    </a>
+                  </div>
+
+                  {/* TIKTOK CARD */}
+                  <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <div className="absolute -top-2 -right-2 bg-pink-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md uppercase tracking-tighter">
+                      {selectedDetail.tier_tiktok || "Nano"}
+                    </div>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
+                      TikTok Profile
+                    </p>
+                    <a
+                      href={`https://tiktok.com/@${selectedDetail.tiktokAccount.replace("@", "")}`}
+                      target="_blank"
+                      className="text-sm font-bold text-pink-600 flex items-center gap-2 hover:underline"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 50 50"
+                        fill="currentColor"
+                      >
+                        <path d="M41,4H9C6.243,4,4,6.243,4,9v32c0,2.757,2.243,5,5,5h32c2.757,0,5-2.243,5-5V9C46,6.243,43.757,4,41,4z M37.006,22.323 c-0.227,0.021-0.457,0.035-0.69,0.035c-2.623,0-4.928-1.349-6.269-3.388c0,5.349,0,11.435,0,11.537c0,4.709-3.818,8.527-8.527,8.527 s-8.527-3.818-8.527-8.527s3.818-8.527,8.527-8.527c0.178,0,0.352,0.016,0.527,0.027v4.202c-0.175-0.021-0.347-0.053-0.527-0.053 c-2.404,0-4.352,1.948-4.352,4.352s1.948,4.352,4.352,4.352s4.527-1.894,4.527-4.298c0-0.095,0.042-19.594,0.042-19.594h4.016 c0.378,3.591,3.277,6.425,6.901,6.685V22.323z" />
+                      </svg>
+                      {selectedDetail.tiktokAccount}
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        ({selectedDetail.tiktokFollowers.toLocaleString()}{" "}
+                        followers)
+                      </span>
+                    </a>
+                  </div>
+
+                  {/* YOUTUBE CARD */}
+                  <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
+                      Channel YouTube
+                    </p>
+                    <a
+                      href={`https://youtube.com/@${selectedDetail.youtube_username || ""}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-bold text-red-600 flex items-center gap-2 hover:underline"
+                    >
+                      <Youtube size={16} className="text-red-600" />{" "}
+                      {selectedDetail.youtube_username || "-"}
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        (
+                        {(
+                          selectedDetail.youtube_subscriber || 0
+                        ).toLocaleString("id-ID")}{" "}
+                        subs)
+                      </span>
+                    </a>
+                  </div>
+
+                  {/* BUSINESS EMAIL CARD */}
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
+                      Business Email
+                    </p>
+                    {selectedDetail.email && selectedDetail.email !== "-" ? (
+                      <a
+                        href={`mailto:${selectedDetail.email}`}
+                        className="text-sm font-bold text-slate-700 flex items-center gap-2 hover:text-[#1B3A5B] transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                          />
+                        </svg>
+                        {selectedDetail.email}
+                      </a>
+                    ) : (
+                      <p className="text-sm font-bold text-slate-300 italic">
+                        - No Email Provided -
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ACTION BUTTONS */}
+              <div className="col-span-1 md:col-span-2 pt-4 flex gap-3">
+                <button
+                  onClick={() => {
+                    onUpdate(selectedDetail);
+                    setSelectedDetail(null);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-amber-500 text-white rounded-2xl font-bold hover:bg-amber-600 shadow-lg shadow-amber-200 transition-all active:scale-95"
                 >
-                  {selectedDetail.status}
-                </span>
-                <Clock size={12} />
-                <span className="text-[10px] font-medium">
-                  Last updated: {formatDate(selectedDetail.last_update)}
-                </span>
+                  <Edit3 size={18} /> Edit Profile
+                </button>
+                <button
+                  onClick={() => {
+                    setTalentToDelete(selectedDetail);
+                    setSelectedDetail(null);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 shadow-lg shadow-red-200 transition-all active:scale-95"
+                >
+                  <Trash2 size={18} /> Delete Talent
+                </button>
               </div>
             </div>
           </div>
         </div>
-        <button
-          onClick={() => setSelectedDetail(null)}
-          className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
-        >
-          <Plus size={24} className="rotate-45" />
-        </button>
-      </div>
-
-      {/* BODY MODAL: GRID 2 KOLOM */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-        {/* KOLOM KIRI: PERSONAL INFO */}
-        <div className="space-y-5">
-          <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
-            Personal Information
-          </h4>
-          <div className="grid grid-cols-2 gap-y-4 gap-x-2">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">
-                Contact Person
-              </p>
-              {selectedDetail.contactPerson ? (
-                <a
-                  href={`https://wa.me/${selectedDetail.contactPerson.replace(/[^0-9]/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-bold text-green-600 hover:text-green-700 flex items-center gap-1 hover:underline"
-                >
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.937 3.672 1.43 5.661 1.43h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                  </svg>
-                  {selectedDetail.contactPerson}
-                </a>
-              ) : (
-                <p className="text-xs font-bold text-slate-300">-</p>
-              )}
-            </div>
-            {/* TIER CLASS SUDAH DIHAPUS DARI SINI */}
-            <DetailItem label="Age" value={`${selectedDetail.umur} Years Old`} />
-            <DetailItem label="Ethnicity" value={selectedDetail.suku} />
-            <DetailItem label="Religion" value={selectedDetail.agama} />
-            <DetailItem label="Zodiac" value={selectedDetail.zodiac} />
-            <DetailItem label="Hobby" value={selectedDetail.hobby} />
-            <DetailItem label="Occupation" value={selectedDetail.pekerjaan} />
-            <DetailItem label="Education" value={selectedDetail.tempatKuliah} />
-            <DetailItem label="Domisili / Location" value={selectedDetail.domisili} />
-            <DetailItem label="Gender" value={selectedDetail.gender || "-"} />
-            <DetailItem label="Hijab Status" value={selectedDetail.hijab === "yes" ? "Hijab" : "Non-Hijab"} />
-          </div>
-        </div>
-
-        {/* KOLOM KANAN: BUSINESS & SOCIALS */}
-        <div className="space-y-5">
-          <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
-            Social Media & Business
-          </h4>
-
-          {/* SOCIAL LINKS */}
-          <div className="space-y-4">
-            {/* INSTAGRAM CARD */}
-            <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
-              <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md uppercase tracking-tighter">
-                {selectedDetail.tier_ig || "Nano"}
-              </div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
-                Instagram Profile
-              </p>
-              <a
-                href={`https://instagram.com/${selectedDetail.igAccount.replace("@", "")}`}
-                target="_blank"
-                className="text-sm font-bold text-blue-600 flex items-center gap-2 hover:underline"
-              >
-                <Instagram size={16} /> {selectedDetail.igAccount}
-                <span className="text-[11px] text-slate-400 font-medium">
-                  ({selectedDetail.igFollowers.toLocaleString()} followers)
-                </span>
-              </a>
-            </div>
-
-            {/* TIKTOK CARD */}
-            <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
-              <div className="absolute -top-2 -right-2 bg-pink-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md uppercase tracking-tighter">
-                {selectedDetail.tier_tiktok || "Nano"}
-              </div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
-                TikTok Profile
-              </p>
-              <a
-                href={`https://tiktok.com/@${selectedDetail.tiktokAccount.replace("@", "")}`}
-                target="_blank"
-                className="text-sm font-bold text-pink-600 flex items-center gap-2 hover:underline"
-              >
-                <svg width="16" height="16" viewBox="0 0 50 50" fill="currentColor">
-                  <path d="M41,4H9C6.243,4,4,6.243,4,9v32c0,2.757,2.243,5,5,5h32c2.757,0,5-2.243,5-5V9C46,6.243,43.757,4,41,4z M37.006,22.323 c-0.227,0.021-0.457,0.035-0.69,0.035c-2.623,0-4.928-1.349-6.269-3.388c0,5.349,0,11.435,0,11.537c0,4.709-3.818,8.527-8.527,8.527 s-8.527-3.818-8.527-8.527s3.818-8.527,8.527-8.527c0.178,0,0.352,0.016,0.527,0.027v4.202c-0.175-0.021-0.347-0.053-0.527-0.053 c-2.404,0-4.352,1.948-4.352,4.352s1.948,4.352,4.352,4.352s4.527-1.894,4.527-4.298c0-0.095,0.042-19.594,0.042-19.594h4.016 c0.378,3.591,3.277,6.425,6.901,6.685V22.323z" />
-                </svg>
-                {selectedDetail.tiktokAccount}
-                <span className="text-[11px] text-slate-400 font-medium">
-                  ({selectedDetail.tiktokFollowers.toLocaleString()} followers)
-                </span>
-              </a>
-            </div>
-
-            {/* YOUTUBE CARD */}
-            <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
-              <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
-                Channel YouTube
-              </p>
-              <a
-                href={`https://youtube.com/@${selectedDetail.youtube_username || ""}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-bold text-red-600 flex items-center gap-2 hover:underline"
-              >
-                <Youtube size={16} className="text-red-600" />{" "}
-                {selectedDetail.youtube_username || "-"}
-                <span className="text-[11px] text-slate-400 font-medium">
-                  ({(selectedDetail.youtube_subscriber || 0).toLocaleString("id-ID")} subs)
-                </span>
-              </a>
-            </div>
-
-            {/* BUSINESS EMAIL CARD */}
-            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-              <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
-                Business Email
-              </p>
-              {selectedDetail.email && selectedDetail.email !== "-" ? (
-                <a
-                  href={`mailto:${selectedDetail.email}`}
-                  className="text-sm font-bold text-slate-700 flex items-center gap-2 hover:text-[#1B3A5B] transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  {selectedDetail.email}
-                </a>
-              ) : (
-                <p className="text-sm font-bold text-slate-300 italic">- No Email Provided -</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ACTION BUTTONS */}
-        <div className="col-span-1 md:col-span-2 pt-4 flex gap-3">
-          <button
-            onClick={() => {
-              onUpdate(selectedDetail);
-              setSelectedDetail(null);
-            }}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-amber-500 text-white rounded-2xl font-bold hover:bg-amber-600 shadow-lg shadow-amber-200 transition-all active:scale-95"
-          >
-            <Edit3 size={18} /> Edit Profile
-          </button>
-          <button
-            onClick={() => {
-              setTalentToDelete(selectedDetail);
-              setSelectedDetail(null);
-            }}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 shadow-lg shadow-red-200 transition-all active:scale-95"
-          >
-            <Trash2 size={18} /> Delete Talent
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
       {/* PAGINATION CONTROLS */}
       <div className="flex flex-col md:flex-row items-center justify-between mt-6 px-2 gap-4">
         {/* Info Rows Per Page */}
@@ -963,6 +1051,46 @@ const handleRealTimeRefresh = async () => {
           </div>
         </div>
       )}
+                {showProgress && (
+            <div className="fixed bottom-10 right-10 z-[9999] animate-in slide-in-from-right-full duration-500">
+              <div className="bg-[#1B3A5B] text-white p-5 rounded-2xl shadow-2xl border border-white/10 min-w-[280px]">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw
+                      size={16}
+                      className="animate-spin text-blue-400"
+                    />
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      Syncing Data
+                    </span>
+                  </div>
+                  <span className="text-xs font-black bg-blue-500/30 px-2 py-1 rounded-lg">
+                    {importProgress.total > 0
+                      ? Math.round(
+                          (importProgress.current / importProgress.total) * 100,
+                        )
+                      : 0}
+                    %
+                  </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mb-2">
+                  <div
+                    className="bg-blue-400 h-full transition-all duration-300 ease-out"
+                    style={{
+                      width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+
+                <p className="text-[10px] text-blue-200 font-medium italic">
+                  Processing {importProgress.current} of {importProgress.total}{" "}
+                  talents...
+                </p>
+              </div>
+            </div>
+          )}
     </div>
   );
 }
@@ -1011,6 +1139,38 @@ function TalentRow({
 }) {
   // 1. Gak perlu setFollowers lagi, pake data dari props t langsung
   const followers = t.igFollowers || 0;
+
+  useEffect(() => {
+    const autoSync = async () => {
+      // 1. Ambil data terakhir update (fallback ke waktu lama kalau kosong)
+      const lastUpdate = t.last_update ? new Date(t.last_update).getTime() : 0;
+
+      // 2. Tentukan batas "Basi" (Gue set 3 hari ya sesuai saran tadi)
+      const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
+      const isStale = Date.now() - lastUpdate > threeDaysInMs;
+
+      // 3. Jika sudah basi dan punya username IG, tembak API
+      if (isStale && t.igAccount && t.igAccount !== "-") {
+        console.log(`[Auto-Sync] ${t.name} is stale. Fetching latest data...`);
+        try {
+          const username = t.igAccount.replace("@", "");
+          // Kita kirim last_update ke API biar divalidasi 24 jam di server juga
+          await fetch(
+            `/API/instagram?username=${username}&id=${t.id}&last_update=${t.last_update || ""}`,
+          );
+          // Gak perlu onRefresh() di sini biar gak bikin tabel kedip-kedip pas user lagi scroll
+        } catch (err) {
+          console.error("Auto-sync failed for", t.name, err);
+        }
+      }
+    };
+
+    // Kasih delay acak (0-5 detik) biar gak nembak barengan pas halaman di-load
+    const delay = Math.floor(Math.random() * 10000);
+    const timeout = setTimeout(autoSync, delay);
+
+    return () => clearTimeout(timeout);
+  }, [t.id, t.igAccount, t.last_update]);
 
   const calculateTier = (followers: number) => {
     if (followers >= 1000000) return "Mega";

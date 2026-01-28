@@ -428,11 +428,11 @@ export default function AddTalentModal({
                 onChange={(v: string) => setFormData({ ...formData, er: v })}
               />
               <Input
-                label="Source Data"
-                value={formData.source}
-                placeholder="Cretivox / Agency / Manual"
+                label="Category"
+                value={formData.category}
+                placeholder="Beauty / Gaming / Food / Finance / Tech"
                 onChange={(v: string) =>
-                  setFormData({ ...formData, source: v })
+                  setFormData({ ...formData, category: v })
                 }
               />
               <div className="space-y-2">
@@ -453,11 +453,11 @@ export default function AddTalentModal({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
-                label="Category"
-                value={formData.category}
-                options={["Beauty", "Gaming", "Food", "Finance", "Tech"]}
+                label="Source"
+                value={formData.source}
+                options={["Artist/Celebrity", "Influencer/KOL", "Talent", "Media", "Clippers",]}
                 onChange={(v: string) =>
-                  setFormData({ ...formData, category: v })
+                  setFormData({ ...formData, source: v })
                 }
               />
               {/* TAMPILAN TIER OTOMATIS (READ ONLY) */}

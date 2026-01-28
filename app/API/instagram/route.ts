@@ -8,19 +8,17 @@ const calculateTier = (followers: number) => {
 };
 
 const calculateER = (edges: any[], followers: number) => {
-  if (!edges || edges.length === 0 || followers === 0) return "0.00%";
-  
+  if (!edges || edges.length === 0 || !followers || followers === 0) return "0.00%";
   const totalInteraction = edges.reduce((acc: number, item: any) => {
     const node = item.node || item;
-    // Cek likes & comments di berbagai kemungkinan field API
-    const likes = node.edge_media_preview_like?.count || node.edge_liked_by?.count || node.like_count || 0;
-    const comments = node.edge_media_to_comment?.count || node.comment_count || 0;
+    // Mapping likes & comments buat provider 120
+    const likes = node.like_count || node.edge_liked_by?.count || node.likes || 0;
+    const comments = node.comment_count || node.edge_media_to_comment?.count || node.comments || 0;
     return acc + likes + comments;
   }, 0);
-
   const avgInteraction = totalInteraction / edges.length;
   const erValue = (avgInteraction / followers) * 100;
-  return erValue.toFixed(2) + "%";
+  return isNaN(erValue) ? "0.00%" : erValue.toFixed(2) + "%";
 };
 
 export async function GET(request: Request) {
@@ -31,83 +29,96 @@ export async function GET(request: Request) {
   if (!username) return NextResponse.json({ error: "Username wajib!" }, { status: 400 });
 
   const RAPID_KEY = process.env.RAPIDAPI_KEY;
-  const HOST = 'instagram120.p.rapidapi.com';
+
+  // --- CONFIG PROVIDER 120 (Endpoint Info & Posts Harus Beda) ---
+  const p120 = {
+    name: "Instagram 120",
+    host: "instagram120.p.rapidapi.com",
+    profileUrl: "https://instagram120.p.rapidapi.com/api/instagram/user/info",
+    postsUrl: "https://instagram120.p.rapidapi.com/api/instagram/posts"
+  };
 
   try {
-    // 1. Ambil Profile Dulu buat Followers
-    const profileRes = await fetch(`https://${HOST}/api/instagram/profile`, {
+    console.log(`[IG Sync] Mencoba ${p120.name} untuk: ${username}`);
+
+    // 1. AMBIL PROFILE (Buat dapet Followers)
+    const profileRes = await fetch(p120.profileUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-rapidapi-host': HOST, 'x-rapidapi-key': RAPID_KEY || '' },
-      body: JSON.stringify({ username }),
-      next: { revalidate: 0 }
+      headers: {
+        'Content-Type': 'application/json',
+        'x-rapidapi-host': p120.host,
+        'x-rapidapi-key': RAPID_KEY || ''
+      },
+      body: JSON.stringify({ username: username }),
     });
-    const profileData = await profileRes.json();
-    // Gunakan path yang sudah terbukti tembus tadi
-    const finalFollowers = profileData.result?.edge_followed_by?.count || profileData.result?.user?.edge_followed_by?.count || 0;
 
-    // 2. LOGIC LOOPING 35 POSTS
-    let allEdges: any[] = [];
-    let nextMaxId = "";
-    const targetPosts = 35;
-
-    console.log(`--- Memulai Sync 35 Post untuk: ${username} ---`);
-
-    for (let i = 0; i < 4; i++) {
-      const postsRes = await fetch(`https://${HOST}/api/instagram/posts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-rapidapi-host': HOST, 'x-rapidapi-key': RAPID_KEY || '' },
-        body: JSON.stringify({ username, maxId: nextMaxId }),
-        next: { revalidate: 0 }
-      });
-      
-      const postsData = await postsRes.json();
-      const currentEdges = postsData.result?.edges || postsData.edges || [];
-      
-      if (currentEdges.length === 0) break;
-
-      allEdges = [...allEdges, ...currentEdges];
-      console.log(`Hit ${i + 1}: Dapet ${currentEdges.length} posts. Total: ${allEdges.length}`);
-      
-      // Ambil token buat page selanjutnya (cursor)
-      nextMaxId = postsData.result?.page_info?.end_cursor || postsData.page_info?.end_cursor || "";
-      
-      if (allEdges.length >= targetPosts || !nextMaxId) break;
+    if (!profileRes.ok) {
+      console.error(`[IG Sync] Profile 120 Fail: ${profileRes.status}`);
+      return NextResponse.json({ error: "API 120 Profile Limit/Error" }, { status: profileRes.status });
     }
 
-    const finalEdges = allEdges.slice(0, targetPosts);
-    const finalER = calculateER(finalEdges, finalFollowers);
-    const newTier = calculateTier(finalFollowers);
+    const profData = await profileRes.json();
+    
+    // Debugging struktur data (liat di terminal)
+    // console.log("Raw Data 120:", JSON.stringify(profData).substring(0, 500));
 
-    // 3. UPDATE KE DATABASE PUSAT
+    // Parsing Followers 120 (Biasanya ada di result atau data)
+    const userData = profData.result || profData.data || profData;
+    const followers = Number(userData?.follower_count || userData?.followers || 0);
+
+    if (followers === 0) {
+      return NextResponse.json({ error: "Followers tidak ditemukan di 120" }, { status: 404 });
+    }
+
+    // 2. AMBIL POSTS (Buat dapet ER)
+    let allEdges: any[] = [];
+    const postsRes = await fetch(p120.postsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-rapidapi-host': p120.host,
+        'x-rapidapi-key': RAPID_KEY || ''
+      },
+      body: JSON.stringify({ username: username }),
+    });
+
+    if (postsRes.ok) {
+      const postsData = await postsRes.json();
+      allEdges = postsData.result?.edges || postsData.edges || postsData.data?.edges || [];
+    }
+
+    const finalER = calculateER(allEdges, followers);
+    const newTier = calculateTier(followers);
+
+    // 3. Update Database Pusat
     if (id && id !== "undefined" && process.env.TALENT_URL) {
-      console.log(`Mengirim ER ${finalER} ke database untuk ID: ${id}`);
-      await fetch(`${process.env.TALENT_URL}/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.TALENT_TOKEN}`
-        },
-        body: JSON.stringify({
-          instagram_followers: String(finalFollowers),
-          tier_ig: newTier,
-          tier: newTier, // Master tier
-          er: finalER,   // Field ER dimasukkan ke sini
-          last_update: new Date().toISOString(),
-          source: `RapidAPI (v120 - Sample ${finalEdges.length} Posts)`
-        })
-      });
+      try {
+        await fetch(`${process.env.TALENT_URL}/${id}`, {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json", 
+            "Authorization": `Bearer ${process.env.TALENT_TOKEN}` 
+          },
+          body: JSON.stringify({
+            instagram_followers: String(followers),
+            tier_ig: newTier,
+            er: finalER,
+            last_update: new Date().toISOString()
+          })
+        });
+      } catch (e) { console.error("DB Update Fail"); }
     }
 
     return NextResponse.json({ 
       success: true, 
-      followers: finalFollowers, 
+      followers, 
       er: finalER, 
-      tier: newTier,
-      post_sampled: finalEdges.length 
+      tier: newTier, 
+      provider: p120.name 
     });
 
-  } catch (error: any) {
-    console.error("Route Error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: any) {
+    console.error("[IG Sync] Fatal Error:", err.message);
+    return NextResponse.json({ error: "Server Error" }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import {
   Search,
@@ -64,6 +64,8 @@ interface TalentViewProps {
   setSortBy: (value: string) => void;
   selectedReligion: string;
   setSelectedReligion: (val: string) => void;
+  selectedSource: string;
+  setSelectedSource: (val: string) => void;
   selectedTier: string;
   setSelectedTier: (val: string) => void;
   selectedAgeRange: string;
@@ -93,21 +95,225 @@ export default function TalentView({
   setSelectedAgeRange,
   selectedStatus,
   setSelectedStatus,
+  selectedSource,
+  setSelectedSource,
   onRefresh,
   isLoading,
 }: TalentViewProps) {
   const [selectedDetail, setSelectedDetail] = useState<Talent | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [isImporting, setIsImporting] = useState(false);
   const [talentToDelete, setTalentToDelete] = useState<Talent | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
-  const [selectedSource, setSelectedSource] = useState("All");
+  const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false); 
+const isCancelledRef = useRef(false);
   const [importProgress, setImportProgress] = useState({
     current: 0,
     total: 0,
   });
   const [showProgress, setShowProgress] = useState(false);
+
+useEffect(() => {
+    const savedData = localStorage.getItem("pending_import_data");
+    const savedIndex = localStorage.getItem("pending_import_index");
+
+    if (savedData && savedIndex) {
+      try {
+        const data = JSON.parse(savedData);
+        const index = parseInt(savedIndex);
+
+        if (Array.isArray(data) && index < data.length) {
+          // Set tampilan progress ke posisi terakhir agar tidak "lompat"
+          setShowProgress(true);
+          setImportProgress({ current: index + 1, total: data.length });
+
+          // Langsung lanjut jalan setelah delay kecil biar komponen siap
+          const timer = setTimeout(() => {
+            console.log(`[Auto-Resume] Melanjutkan import dari index: ${index}`);
+            processImport(data, index);
+          }, 1500); // Delay 1.5 detik biar transisinya halus
+          
+          return () => clearTimeout(timer);
+        }
+      } catch (e) {
+        console.error("Gagal resume import:", e);
+      }
+    }
+  }, []);
+
+  // Fungsi Tombol Cancel
+const handleCancelImport = () => {
+    isCancelledRef.current = true; 
+    localStorage.removeItem("pending_import_data");
+    localStorage.removeItem("pending_import_index");
+    
+    setShowProgress(false);
+    setIsPaused(false);
+    isPausedRef.current = false;
+    onRefresh();
+  };
+
+const safeNum = (val: any) => {
+    if (!val || val === "NaN" || val === "null" || val === "") return "0";
+    const cleaned = String(val).replace(/[^\d]/g, "");
+    return cleaned || "0";
+  };
+
+
+  // 4. FUNGSI TOGGLE PAUSE
+  const togglePause = () => {
+    const nextState = !isPaused;
+    setIsPaused(nextState);
+    isPausedRef.current = nextState; // Memberitahu loop processImport
+  };
+
+  // 5. FUNGSI INTI IMPORT (LOOPING)
+  const processImport = async (allData: any[], startIndex = 0) => {
+    if (!allData || allData.length === 0) return;
+    
+    setShowProgress(true);
+    setIsPaused(false);
+    isPausedRef.current = false;
+    isCancelledRef.current = false;
+    localStorage.setItem("pending_import_data", JSON.stringify(allData));
+
+    for (let i = startIndex; i < allData.length; i++) {
+      // --- PENGECEKAN CANCEL (Real-time via Ref) ---
+      if (isCancelledRef.current) {
+        console.log("Import dihentikan oleh user.");
+        return;
+      }
+
+      // --- PENGECEKAN PAUSE (Real-time via Ref) ---
+      while (isPausedRef.current) {
+        await new Promise((r) => setTimeout(r, 500));
+        if (isCancelledRef.current) return; 
+      }
+
+      const row = allData[i];
+      setImportProgress({ current: i + 1, total: allData.length });
+      localStorage.setItem("pending_import_index", i.toString());
+
+      try {
+        // --- A. Cleaning Usernames ---
+        const igUser = String(row["Username_Instagram"] || "").replace("@", "").trim();
+        const ttUser = String(row["Username_Tiktok"] || "").replace("@", "").trim();
+
+        let igData = { followers: "0", er: "0.00%", tier: "Nano" };
+        let ttData = { followers: "0" };
+
+        // --- B. Fetch Instagram ---
+        if (igUser && igUser !== "-" && igUser !== "N/A") {
+          try {
+            const res = await fetch(`/API/instagram?username=${igUser}`);
+            if (res.ok) {
+              const resJson = await res.json();
+              igData = {
+                followers: String(resJson.followers || "0"),
+                er: resJson.er || "0.00%",
+                tier: resJson.tier || "Nano",
+              };
+            }
+          } catch (e) { console.warn(`IG Skip: ${igUser}`); }
+        }
+
+        // --- C. Fetch TikTok ---
+        if (ttUser && ttUser !== "-" && ttUser !== "N/A") {
+          try {
+            const res = await fetch(`/API/tiktok?username=${ttUser}`);
+            if (res.ok) {
+              const resJson = await res.json();
+              ttData = { followers: String(resJson.followers || "0") };
+            }
+          } catch (e) { console.warn(`TT Skip: ${ttUser}`); }
+        }
+
+        // --- D. Final Variables (Prioritas API, Fallback Excel) ---
+        const igFollowersFinal = igData.followers !== "0" ? igData.followers : safeNum(row["Followers_Instagram"]);
+        const ttFollowersFinal = ttData.followers !== "0" ? ttData.followers : safeNum(row["Followers_Tiktok"]);
+
+        // --- E. Payload Sesuai Struktur Database ---
+        const payload = {
+          name: String(row["Name"] || row["name"] || "-"),
+          domicile: String(row["domisili"] || row["domicile"] || "-"),
+          instagram_username: igUser ? `@${igUser}` : "-",
+          instagram_followers: igFollowersFinal,
+          tiktok_username: ttUser ? `@${ttUser}` : "-",
+          tiktok_followers: ttFollowersFinal,
+          youtube_username: String(row["YouTube Username"] || "-"),
+          youtube_subscriber: safeNum(row["YouTube Subscribers"]),
+          contact_person: String(row["Phone Number"] || "-"),
+          ethnicity: String(row["Ethnic"] || "-"),
+          religion: String(row["Religion"] || "Other"),
+          reason_for_joining: String(row["reasons to be a talent"] || "-"),
+          hobby: String(row["Hobby"] || "-"),
+          age: safeNum(row["Age"]),
+          occupation: String(row["Work"] || "-"),
+          zodiac: String(row["Zodiac"] || "-"),
+          university: String(row["college"] || "-"),
+          category: String(row["Category"] || "Beauty"),
+          rate_card: safeNum(row["Rate Card"]),
+          status: "active",
+          tier: igData.tier,
+          er: igData.er,
+          last_update: new Date().toISOString(),
+          email: String(row["Email Address"] || row["Email"] || "-"),
+          hijab: String(row["Hijab Status"] || row["Hijab/Non"] || "no").toLowerCase().includes("yes") ? "yes" : "no",
+          gender: String(row["Gender"] || "-"),
+          source: String(row.finalSource || "-"),
+        };
+
+        // --- F. Kirim POST ke API Talent ---
+        await fetch("/API/Talent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+      } catch (err) {
+        console.error(`Gagal baris ${i + 1}:`, err);
+      }
+
+      // Delay biar gak kena Limit RapidAPI
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+
+    // --- FINISH ---
+    if (!isCancelledRef.current) {
+      handleCancelImport(); // Bersih-bersih storage & Progress Bar
+      alert("Semua data berhasil di-import!");
+    }
+  };
+
+
+  // --- 3. EFFECT UNTUK RESUME (PENTING: Cek startIndex) ---
+  useEffect(() => {
+    const savedData = localStorage.getItem("pending_import_data");
+    const savedIndex = localStorage.getItem("pending_import_index");
+
+    if (savedData && savedIndex) {
+      try {
+        const data = JSON.parse(savedData);
+        const index = parseInt(savedIndex);
+
+        if (Array.isArray(data) && index < data.length) {
+          // Kasih delay dikit pas mount biar gak bentrok sama render awal
+          const timer = setTimeout(() => {
+            if (confirm(`Proses import terhenti di ${index + 1}. Lanjut?`)) {
+              processImport(data, index);
+            } else {
+              localStorage.removeItem("pending_import_data");
+              localStorage.removeItem("pending_import_index");
+            }
+          }, 1000);
+          return () => clearTimeout(timer);
+        }
+      } catch (e) {
+        localStorage.removeItem("pending_import_data");
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (selectedDetail) {
@@ -175,7 +381,7 @@ export default function TalentView({
     }
   };
 
-  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -184,125 +390,31 @@ export default function TalentView({
       try {
         const bstr = event.target?.result;
         const wb = XLSX.read(bstr, { type: "binary" });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rawData: any[] = XLSX.utils.sheet_to_json(ws, { range: 1 });
-        const cleanData = rawData.filter((row) => row["Name"]);
 
-        if (cleanData.length === 0)
-          return alert("File kosong atau format salah!");
+        let allCleanData: any[] = [];
 
-        // 1. Tampilkan Progress
-        setShowProgress(true);
-        setImportProgress({ current: 0, total: cleanData.length });
+        wb.SheetNames.forEach((sheetName) => {
+          const ws = wb.Sheets[sheetName];
+          const rawData: any[] = XLSX.utils.sheet_to_json(ws, { range: 1 });
 
-        for (let i = 0; i < cleanData.length; i++) {
-          const row = cleanData[i];
+          const cleanDataPerSheet = rawData
+            .filter((row) => row["Name"])
+            .map((row) => ({
+              ...row,
+              finalSource: row["Source"] || row["source"] || sheetName,
+            }));
 
-          // Update angka progress di UI
-          setImportProgress((prev) => ({ current: i + 1, total: cleanData.length }));
+          allCleanData = [...allCleanData, ...cleanDataPerSheet];
+        });
 
-          // Ambil data dasar dari Excel
-          let igUser = String(row["Username_Instagram"] || "")
-            .replace("@", "")
-            .trim();
-          let ttUser = String(row["Username_Tiktok"] || "")
-            .replace("@", "")
-            .trim();
+        if (allCleanData.length === 0) return alert("File kosong atau format salah!");
 
-          let finalIgFollowers = String(
-            row["Followers_Instagram"] || "",
-          ).replace(/\D/g, "");
-          let finalTtFollowers = String(row["Followers_Tiktok"] || "").replace(
-            /\D/g,
-            "",
-          );
-          let finalER = "0.00%";
-          let finalTier = String(row["Tier"] || "Nano");
-          let currentUsedProvider = "Direct Excel"; // Default info
+        // --- INI KUNCINYA: Panggil fungsi processImport, jangan bikin loop lagi di sini ---
+        processImport(allCleanData);
 
-          // --- 2. TEMBAK API INSTAGRAM (Real-time) ---
-          if (igUser && igUser !== "-") {
-            try {
-              const resIg = await fetch(`/API/instagram?username=${igUser}`);
-              const dataIg = await resIg.json();
-              if (dataIg.success) {
-                finalIgFollowers = String(dataIg.followers);
-                finalER = dataIg.er;
-                finalTier = dataIg.tier;
-              }
-            } catch (err) {
-              console.error("IG Sync Fail:", igUser);
-            }
-          }
-
-          // --- 3. TEMBAK API TIKTOK (Real-time) ---
-          if (ttUser && ttUser !== "-") {
-            try {
-              const resTt = await fetch(`/API/tiktok?username=${ttUser}`);
-              const dataTt = await resTt.json();
-              if (dataTt.success) {
-                finalTtFollowers = String(dataTt.followers);
-                // Kita ambil nama provider dari API biar muncul di UI Notifikasi
-                currentUsedProvider = dataTt.provider;
-              }
-            } catch (err) {
-              console.error("TikTok Sync Fail:", ttUser);
-            }
-          }
-
-          // 4. KIRIM KE DATABASE
-          const payload = {
-            name: String(row["Name"] || ""),
-            domicile: "-",
-            instagram_username: igUser ? `@${igUser}` : "-",
-            instagram_followers: finalIgFollowers,
-            tiktok_username: ttUser ? `@${ttUser}` : "-",
-            tiktok_followers: finalTtFollowers,
-            youtube_username: "-",
-            youtube_subscriber: "",
-            contact_person: String(row["Phone Number"] || ""),
-            ethnicity: "-",
-            religion: "Other",
-            reason_for_joining: "-",
-            hobby: "-",
-            age: "",
-            occupation: "-",
-            zodiac: "-",
-            university: "-",
-            category: String(row["Category"] || "Beauty"),
-            rate_card: "",
-            status: "active",
-            tier: finalTier,
-            er: finalER,
-            last_update: new Date().toISOString(),
-            email: String(row["Email"] || "-"),
-            hijab: String(row["Hijab/Non"] || "no")
-              .toLowerCase()
-              .includes("non")
-              ? "no"
-              : "yes",
-            gender: String(row["Gender"] || "-"),
-            source: `Import + ${currentUsedProvider}`, // Keterangan provider masuk ke DB
-          };
-
-          await fetch("/API/Talent", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-
-          // Delay 1.2 detik biar Failover-nya kerasa dan aman dari Rate Limit
-          await new Promise((r) => setTimeout(r, 1200));
-        }
-
-        alert(`Sukses Import & Sync ${cleanData.length} talent!`);
-        onRefresh();
       } catch (err) {
         console.error(err);
         alert("Error saat import.");
-      } finally {
-        // Notifikasi hilang otomatis setelah 3 detik selesai
-        setTimeout(() => setShowProgress(false), 3000);
       }
     };
     reader.readAsBinaryString(file);
@@ -380,8 +492,7 @@ export default function TalentView({
     selectedTier !== "All" ||
     selectedAgeRange !== "All" ||
     selectedStatus !== "All" ||
-    selectedCategory !== "All";
-  selectedSource !== "All";
+    selectedSource !== "All";
 
   // Hitung indeks data
   const indexOfLastItem = currentPage * rowsPerPage;
@@ -392,7 +503,15 @@ export default function TalentView({
   // Reset ke halaman 1 jika hasil filter berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedCategory, selectedTier, selectedReligion]);
+  }, [
+    searchTerm,
+    selectedSource,
+    selectedCategory,
+    selectedTier,
+    selectedReligion,
+    selectedAgeRange,
+    selectedStatus,
+  ]);
 
   function SortableHeader({
     label,
@@ -469,8 +588,41 @@ export default function TalentView({
             <FilterSelect
               placeholder="All Source"
               value={selectedSource}
-              onChange={setSelectedReligion}
-              options={["Instagram"]}
+              onChange={setSelectedSource}
+              options={[
+                "Artist/Celebrity",
+                "Influencer/KOL",
+                "Talent",
+                "Media",
+                "Clippers",
+              ]}
+            />
+            <FilterSelect
+              placeholder="All Status"
+              value={selectedStatus}
+              onChange={setSelectedStatus}
+              options={["Active", "Inactive"]}
+            />
+            <FilterSelect
+              placeholder="All Tier"
+              value={selectedTier}
+              onChange={setSelectedTier}
+              options={[
+                "IG: Mega",
+                "IG: Macro",
+                "IG: Micro",
+                "IG: Nano",
+                "TT: Mega",
+                "TT: Macro",
+                "TT: Micro",
+                "TT: Nano",
+              ]}
+            />
+            <FilterSelect
+              placeholder="All Age"
+              value={selectedAgeRange}
+              onChange={setSelectedAgeRange}
+              options={["10-20", "21-30", "31-40", "41-50", "51++"]}
             />
             <FilterSelect
               placeholder="All Religion"
@@ -485,24 +637,6 @@ export default function TalentView({
                 "Khonghucu",
                 "Other",
               ]}
-            />
-            <FilterSelect
-              placeholder="All Tier"
-              value={selectedTier}
-              onChange={setSelectedTier}
-              options={["Mega", "Macro", "Micro", "Nano"]}
-            />
-            <FilterSelect
-              placeholder="All Age"
-              value={selectedAgeRange}
-              onChange={setSelectedAgeRange}
-              options={["10-20", "21-30", "31-40", "41-50", "51++"]}
-            />
-            <FilterSelect
-              placeholder="All Status"
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-              options={["Active", "Inactive"]}
             />
             {/* <FilterSelect
               placeholder="All Category"
@@ -569,6 +703,7 @@ export default function TalentView({
                 setSelectedAgeRange("All");
                 setSelectedStatus("All");
                 setSelectedCategory("All");
+                setSelectedSource("All");
                 setSearchTerm("");
               }}
               className="ml-2 text-[10px] font-extrabold text-red-500 hover:text-red-700 underline underline-offset-4 uppercase tracking-wider"
@@ -1051,46 +1186,60 @@ export default function TalentView({
           </div>
         </div>
       )}
-                {showProgress && (
-            <div className="fixed bottom-10 right-10 z-[9999] animate-in slide-in-from-right-full duration-500">
-              <div className="bg-[#1B3A5B] text-white p-5 rounded-2xl shadow-2xl border border-white/10 min-w-[280px]">
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center gap-2">
-                    <RefreshCw
-                      size={16}
-                      className="animate-spin text-blue-400"
-                    />
-                    <span className="text-xs font-bold uppercase tracking-wider">
-                      Syncing Data
-                    </span>
-                  </div>
-                  <span className="text-xs font-black bg-blue-500/30 px-2 py-1 rounded-lg">
-                    {importProgress.total > 0
-                      ? Math.round(
-                          (importProgress.current / importProgress.total) * 100,
-                        )
-                      : 0}
-                    %
-                  </span>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mb-2">
-                  <div
-                    className="bg-blue-400 h-full transition-all duration-300 ease-out"
-                    style={{
-                      width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%`,
-                    }}
-                  />
-                </div>
-
-                <p className="text-[10px] text-blue-200 font-medium italic">
-                  Processing {importProgress.current} of {importProgress.total}{" "}
-                  talents...
-                </p>
+      {showProgress && (
+        <div className="fixed bottom-10 right-10 z-[9999] animate-in slide-in-from-right-full duration-500">
+          <div className="bg-[#1B3A5B] text-white p-5 rounded-2xl shadow-2xl border border-white/10 min-w-[320px]">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2">
+                <RefreshCw
+                  size={16}
+                  className={`${isPaused ? "" : "animate-spin"} text-blue-400`}
+                />
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  {isPaused ? "Paused" : "Syncing Data"}
+                </span>
               </div>
+              <span className="text-xs font-black bg-blue-500/30 px-2 py-1 rounded-lg">
+                {Math.round(
+                  (importProgress.current / importProgress.total) * 100,
+                )}
+                %
+              </span>
             </div>
-          )}
+
+            {/* Progress Bar */}
+            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mb-4">
+              <div
+                className="bg-blue-400 h-full transition-all duration-300"
+                style={{
+                  width: `${(importProgress.current / importProgress.total) * 100}%`,
+                }}
+              />
+            </div>
+
+            {/* CONTROLS */}
+            <div className="flex gap-2">
+              <button
+                onClick={togglePause}
+                className="flex-1 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-[10px] font-bold uppercase transition-all"
+              >
+                {isPaused ? "Resume" : "Pause"}
+              </button>
+              <button
+                onClick={() => handleCancelImport()}
+                className="flex-1 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 rounded-lg text-[10px] font-bold uppercase transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <p className="text-[9px] text-blue-200 mt-3 italic text-center">
+              Processing {importProgress.current} of {importProgress.total}{" "}
+              talents...
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1125,6 +1274,26 @@ function FilterSelect({ value, onChange, options, placeholder }: any) {
     </div>
   );
 }
+
+const getSourceStyle = (source: string) => {
+  switch (source) {
+    case "Artist/Celebrity":
+      return "bg-purple-100 text-purple-700 border-purple-200";
+    case "Influencer/KOL":
+      return "bg-blue-100 text-blue-700 border-blue-200";
+    case "Talent":
+      return "bg-green-100 text-green-700 border-green-200";
+    case "Media":
+      return "bg-orange-100 text-orange-700 border-orange-200";
+    case "Clippers":
+      return "bg-pink-100 text-pink-700 border-pink-200";
+    default:
+      // Warna default jika source berasal dari API (Multi-Provider)
+      if (source?.includes("Multi-Provider"))
+        return "bg-slate-100 text-slate-600 border-slate-200";
+      return "bg-gray-100 text-gray-600 border-gray-200";
+  }
+};
 
 function TalentRow({
   t,
@@ -1198,9 +1367,11 @@ function TalentRow({
         </div>
       </td>
       <td className="p-5">
-        <div className="flex items-center gap-1.5 text-slate-600 font-medium text-xs">
-          {t.source}
-        </div>
+        <span
+          className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${getSourceStyle(t.source)}`}
+        >
+          {t.source || "Unknown"}
+        </span>
       </td>
       {/* KOLOM FOLLOWERS IG */}
       <td className="p-5 text-center border-r border-slate-50">

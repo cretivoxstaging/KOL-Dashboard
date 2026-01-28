@@ -60,6 +60,7 @@ export default function Page() {
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedTier, setSelectedTier] = useState("All");
   const [selectedAgeRange, setSelectedAgeRange] = useState("All");
+  const [selectedSource, setSelectedSource] = useState("All");
   const API_URL = "/API/Talent";
 
   // 1. Tambahkan state untuk Sorting di bagian atas komponen
@@ -100,7 +101,26 @@ export default function Page() {
       const matchStatus =
         selectedStatus === "All" || t.status === selectedStatus;
 
-      const matchTier = selectedTier === "All" || t.tier === selectedTier;
+const matchTier = () => {
+  if (selectedTier === "All") return true;
+  
+  // Jika user pilih "IG: Mega", kita cek tier_ig milik talent
+  if (selectedTier.startsWith("IG:")) {
+    const targetTier = selectedTier.replace("IG: ", "");
+    return t.tier_ig === targetTier;
+  }
+  
+  // Jika user pilih "TT: Mega", kita cek tier_tiktok milik talent
+  if (selectedTier.startsWith("TT: ")) {
+    const targetTier = selectedTier.replace("TT: ", "");
+    return t.tier_tiktok === targetTier;
+  }
+
+  return t.tier === selectedTier;
+};
+
+      const matchSource =
+        selectedSource === "All" || t.source === selectedSource;
 
       // Filter Umur (Range)
       const age = parseInt(t.umur) || 0;
@@ -115,7 +135,12 @@ export default function Page() {
         selectedAgeRange === "All" || ageRange === selectedAgeRange;
 
       return (
-        matchSearch && matchReligion && matchStatus && matchTier && matchAge
+        matchSearch &&
+        matchReligion &&
+        matchStatus &&
+        matchTier() &&
+        matchAge &&
+        matchSource
       );
     })
     .sort((a, b) => {
@@ -229,7 +254,7 @@ export default function Page() {
             monthlyImpressions: t.monthly_impressions || [
               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ],
-            tier_ig: t.tier_ig || "Nano",
+            tier_ig: getTier(ig),
             tier_tiktok: getTier(tt),
             er: t.er || "0%",
             source: t.source || "-",
@@ -263,6 +288,7 @@ export default function Page() {
       setSelectedStatus("All");
       setSelectedTier("All");
       setSelectedAgeRange("All");
+      setSelectedSource("All");
 
       // 3. Ambil data ulang dari API
       await loadTalents();
@@ -542,6 +568,8 @@ export default function Page() {
                   isLoading={isLoading}
                   sortBy={sortBy}
                   setSortBy={setSortBy}
+                  selectedSource={selectedSource}
+                  setSelectedSource={setSelectedSource}
                   selectedReligion={selectedReligion}
                   setSelectedReligion={setSelectedReligion}
                   selectedStatus={selectedStatus}

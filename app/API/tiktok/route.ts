@@ -16,8 +16,18 @@ export async function GET(request: Request) {
 
   const RAPID_KEY = process.env.RAPIDAPI_KEY;
 
-  // --- KONFIGURASI PROVIDER ---
+  // --- KONFIGURASI PROVIDER (Urutan Baru) ---
   const providers = [
+    {
+      name: "ByteDance Services (Urutan 1)",
+      host: "bytedance-services.p.rapidapi.com",
+      url: (user: string) => `https://bytedance-services.p.rapidapi.com/user/info?unique_id=${user}`,
+    },
+    {
+      name: "TikTok Best Experience (Urutan 2)",
+      host: "tiktok-best-experience.p.rapidapi.com",
+      url: (user: string) => `https://tiktok-best-experience.p.rapidapi.com/user/info?unique_id=${user}`,
+    },
     {
       name: "TikTok Scraper (Priority - 20/day)",
       host: "tiktok-scraper2.p.rapidapi.com",
@@ -31,7 +41,7 @@ export async function GET(request: Request) {
     {
       name: "TikTok API 23 (Backup 2)",
       host: "tiktok-api23.p.rapidapi.com",
-      url: (user: string) => `https://tiktok-api23.p.rapidapi.com/api/user/info?uniqueId=${user}`, // Note: API 23 pake uniqueId (pake 'I' gede)
+      url: (user: string) => `https://tiktok-api23.p.rapidapi.com/api/user/info?uniqueId=${user}`,
     }
   ];
 
@@ -50,7 +60,6 @@ export async function GET(request: Request) {
         next: { revalidate: 0 }
       });
 
-      // Jika limit abis (429), lanjut ke provider berikutnya
       if (res.status === 429) {
         console.warn(`[Limit Out] ${provider.name} habis kuota, pindah...`);
         continue;
@@ -60,17 +69,17 @@ export async function GET(request: Request) {
 
       const result = await res.json();
       
-      // MAPPING DATA: Karena tiap API strukturnya bisa beda dikit
-      // Kita coba tangkap semua kemungkinan path followers
+      // MAPPING DATA: Ditambahin untuk handle provider ByteDance & Best Experience
       const followers = 
-        result.data?.stats?.followerCount ||     // Struktur tiktok-scraper2
-        result.userInfo?.stats?.followerCount || // Struktur tiktok-api23
-        result.user?.stats?.followerCount ||     // Struktur tiktok-scraper7
+        result.data?.user?.stats?.followerCount || // Sering dipake di provider baru
+        result.data?.stats?.followerCount ||        // tiktok-scraper2
+        result.userInfo?.stats?.followerCount ||    // tiktok-api23
+        result.user?.stats?.followerCount ||        // tiktok-scraper7
         0;
 
       if (followers > 0) {
         successData = { followers: Math.floor(Number(followers)), providerName: provider.name };
-        break; // Berhasil! Keluar dari loop
+        break; 
       }
     } catch (err: any) {
       console.error(`Error di ${provider.name}:`, err.message);
@@ -78,7 +87,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // JIKA SEMUA GAGAL
   if (!successData) {
     return NextResponse.json({ error: "Semua provider TikTok limit abis!" }, { status: 503 });
   }
@@ -86,7 +94,6 @@ export async function GET(request: Request) {
   const { followers, providerName } = successData;
   const newTier = calculateTier(followers);
 
-  // --- PUSH KE DATABASE PUSAT ---
   if (id && id !== "undefined" && process.env.TALENT_URL) {
     await fetch(`${process.env.TALENT_URL}/${id}`, {
       method: "PUT",

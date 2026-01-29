@@ -351,7 +351,7 @@ export default function DashboardView({
         <div className="col-span-12 lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-sm font-bold text-slate-800">
-              Age Range Distribution
+              Source Distribution
             </h3>
             <Cake size={16} className="text-slate-300" />
           </div>

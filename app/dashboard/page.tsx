@@ -101,23 +101,23 @@ export default function Page() {
       const matchStatus =
         selectedStatus === "All" || t.status === selectedStatus;
 
-const matchTier = () => {
-  if (selectedTier === "All") return true;
-  
-  // Jika user pilih "IG: Mega", kita cek tier_ig milik talent
-  if (selectedTier.startsWith("IG:")) {
-    const targetTier = selectedTier.replace("IG: ", "");
-    return t.tier_ig === targetTier;
-  }
-  
-  // Jika user pilih "TT: Mega", kita cek tier_tiktok milik talent
-  if (selectedTier.startsWith("TT: ")) {
-    const targetTier = selectedTier.replace("TT: ", "");
-    return t.tier_tiktok === targetTier;
-  }
+      const matchTier = () => {
+        if (selectedTier === "All") return true;
 
-  return t.tier === selectedTier;
-};
+        // Jika user pilih "IG: Mega", kita cek tier_ig milik talent
+        if (selectedTier.startsWith("IG:")) {
+          const targetTier = selectedTier.replace("IG: ", "");
+          return t.tier_ig === targetTier;
+        }
+
+        // Jika user pilih "TT: Mega", kita cek tier_tiktok milik talent
+        if (selectedTier.startsWith("TT: ")) {
+          const targetTier = selectedTier.replace("TT: ", "");
+          return t.tier_tiktok === targetTier;
+        }
+
+        return t.tier === selectedTier;
+      };
 
       const matchSource =
         selectedSource === "All" || t.source === selectedSource;
@@ -162,19 +162,16 @@ const matchTier = () => {
             : b.name.localeCompare(a.name);
 
         case "igFollowers":
-          // Pastikan convert ke Number biar aman
           const followersA = Number(a.igFollowers) || 0;
           const followersB = Number(b.igFollowers) || 0;
           return isAsc ? followersA - followersB : followersB - followersA;
 
-        case "tier":
-          const tierWeight: any = { Mega: 4, Macro: 3, Micro: 2, Nano: 1 };
-          const weightA = tierWeight[a.tier] || 0;
-          const weightB = tierWeight[b.tier] || 0;
-          return isAsc ? weightA - weightB : weightB - weightA;
+        case "tiktokFollowers":
+          const ttA = Number(a.tiktokFollowers) || 0;
+          const ttB = Number(b.tiktokFollowers) || 0;
+          return isAsc ? ttA - ttB : ttB - ttA;
 
         default:
-          // Fallback: Jika sortBy isinya "update-desc" tapi gak masuk case atas
           if (sortBy === "update-desc") {
             return getTimestamp(b.last_update) - getTimestamp(a.last_update);
           }
@@ -377,7 +374,7 @@ const matchTier = () => {
         tier_ig: currentIgTier,
         tier_tiktok: currentTtTier, // Pakai hasil fetch TikTok
         er: formData.er,
-        source: talentToEdit ? formData.source : "RapidAPI",
+        source: talentToEdit ? formData.source : "Manual",
         tier: currentIgTier, // Tier utama biasanya ikut IG
         last_update: new Date().toISOString(),
         email: formData.email,
@@ -539,7 +536,7 @@ const matchTier = () => {
         </div>
       </aside>
 
-      <main className="flex-1 h-full overflow-y-auto p-8 bg-[#F8FAFC]">
+      <main className="flex-1 h-full overflow-y-auto bg-[#F8FAFC]">
         {isLoading ? (
           <div className="flex flex-col h-full items-center justify-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1B3A5B]"></div>
@@ -547,50 +544,52 @@ const matchTier = () => {
           </div>
         ) : (
           <>
-            {activeTab === "dashboard" && (
-              <DashboardView
-                talents={talents}
-                impressionData={impressionData}
-              />
-            )}
-            {activeTab === "talent" && (
-              <>
-                <TalentView
-                  searchTerm={searchTerm}
-                  setSearchTerm={setSearchTerm}
-                  selectedCategory={selectedCategory}
-                  setSelectedCategory={setSelectedCategory}
-                  filteredTalent={filteredAndSortedTalents}
-                  onAddClick={() => setIsModalOpen(true)}
-                  onDelete={handleDeleteTalent}
-                  onUpdate={handleOpenEdit}
-                  onRefresh={handleRefresh}
-                  isLoading={isLoading}
-                  sortBy={sortBy}
-                  setSortBy={setSortBy}
-                  selectedSource={selectedSource}
-                  setSelectedSource={setSelectedSource}
-                  selectedReligion={selectedReligion}
-                  setSelectedReligion={setSelectedReligion}
-                  selectedStatus={selectedStatus}
-                  setSelectedStatus={setSelectedStatus}
-                  selectedTier={selectedTier}
-                  setSelectedTier={setSelectedTier}
-                  selectedAgeRange={selectedAgeRange}
-                  setSelectedAgeRange={setSelectedAgeRange}
+            <div className="p-8">
+              {activeTab === "dashboard" && (
+                <DashboardView
+                  talents={talents}
+                  impressionData={impressionData}
                 />
-                {isModalOpen && (
-                  <AddTalentModal
-                    onClose={() => {
-                      setIsModalOpen(false);
-                      setTalentToEdit(null);
-                    }}
-                    onSave={handleSaveTalent}
-                    initialData={talentToEdit}
+              )}
+              {activeTab === "talent" && (
+                <>
+                  <TalentView
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    selectedCategory={selectedCategory}
+                    setSelectedCategory={setSelectedCategory}
+                    filteredTalent={filteredAndSortedTalents}
+                    onAddClick={() => setIsModalOpen(true)}
+                    onDelete={handleDeleteTalent}
+                    onUpdate={handleOpenEdit}
+                    onRefresh={handleRefresh}
+                    isLoading={isLoading}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
+                    selectedSource={selectedSource}
+                    setSelectedSource={setSelectedSource}
+                    selectedReligion={selectedReligion}
+                    setSelectedReligion={setSelectedReligion}
+                    selectedStatus={selectedStatus}
+                    setSelectedStatus={setSelectedStatus}
+                    selectedTier={selectedTier}
+                    setSelectedTier={setSelectedTier}
+                    selectedAgeRange={selectedAgeRange}
+                    setSelectedAgeRange={setSelectedAgeRange}
                   />
-                )}
-              </>
-            )}
+                  {isModalOpen && (
+                    <AddTalentModal
+                      onClose={() => {
+                        setIsModalOpen(false);
+                        setTalentToEdit(null);
+                      }}
+                      onSave={handleSaveTalent}
+                      initialData={talentToEdit}
+                    />
+                  )}
+                </>
+              )}
+            </div>
             {activeTab === "tax" && <TaxCalculatorView />}
           </>
         )}

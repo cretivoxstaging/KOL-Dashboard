@@ -106,15 +106,15 @@ export default function TalentView({
   const [talentToDelete, setTalentToDelete] = useState<Talent | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isPaused, setIsPaused] = useState(false);
-  const isPausedRef = useRef(false); 
-const isCancelledRef = useRef(false);
+  const isPausedRef = useRef(false);
+  const isCancelledRef = useRef(false);
   const [importProgress, setImportProgress] = useState({
     current: 0,
     total: 0,
   });
   const [showProgress, setShowProgress] = useState(false);
 
-useEffect(() => {
+  useEffect(() => {
     const savedData = localStorage.getItem("pending_import_data");
     const savedIndex = localStorage.getItem("pending_import_index");
 
@@ -130,10 +130,12 @@ useEffect(() => {
 
           // Langsung lanjut jalan setelah delay kecil biar komponen siap
           const timer = setTimeout(() => {
-            console.log(`[Auto-Resume] Melanjutkan import dari index: ${index}`);
+            console.log(
+              `[Auto-Resume] Melanjutkan import dari index: ${index}`,
+            );
             processImport(data, index);
           }, 1500); // Delay 1.5 detik biar transisinya halus
-          
+
           return () => clearTimeout(timer);
         }
       } catch (e) {
@@ -143,23 +145,22 @@ useEffect(() => {
   }, []);
 
   // Fungsi Tombol Cancel
-const handleCancelImport = () => {
-    isCancelledRef.current = true; 
+  const handleCancelImport = () => {
+    isCancelledRef.current = true;
     localStorage.removeItem("pending_import_data");
     localStorage.removeItem("pending_import_index");
-    
+
     setShowProgress(false);
     setIsPaused(false);
     isPausedRef.current = false;
     onRefresh();
   };
 
-const safeNum = (val: any) => {
+  const safeNum = (val: any) => {
     if (!val || val === "NaN" || val === "null" || val === "") return "0";
     const cleaned = String(val).replace(/[^\d]/g, "");
     return cleaned || "0";
   };
-
 
   // 4. FUNGSI TOGGLE PAUSE
   const togglePause = () => {
@@ -171,7 +172,7 @@ const safeNum = (val: any) => {
   // 5. FUNGSI INTI IMPORT (LOOPING)
   const processImport = async (allData: any[], startIndex = 0) => {
     if (!allData || allData.length === 0) return;
-    
+
     setShowProgress(true);
     setIsPaused(false);
     isPausedRef.current = false;
@@ -188,7 +189,7 @@ const safeNum = (val: any) => {
       // --- PENGECEKAN PAUSE (Real-time via Ref) ---
       while (isPausedRef.current) {
         await new Promise((r) => setTimeout(r, 500));
-        if (isCancelledRef.current) return; 
+        if (isCancelledRef.current) return;
       }
 
       const row = allData[i];
@@ -197,41 +198,75 @@ const safeNum = (val: any) => {
 
       try {
         // --- A. Cleaning Usernames ---
-        const igUser = String(row["Username_Instagram"] || "").replace("@", "").trim();
-        const ttUser = String(row["Username_Tiktok"] || "").replace("@", "").trim();
+        const igUser = String(row["Username_Instagram"] || "")
+          .replace("@", "")
+          .trim();
+        if (igUser && igUser !== "-" && igUser !== "N/A") {
+          try {
+            const checkRes = await fetch(`/API/Talent?search=${igUser}`);
+            const checkData = await checkRes.json();
+
+            // Cek apakah ada yang usernamenya sama persis
+            const isDuplicate = checkData.some(
+              (t: any) =>
+                t.igAccount?.replace("@", "").toLowerCase() ===
+                igUser.toLowerCase(),
+            );
+
+            if (isDuplicate) {
+              console.warn(`[Skip] @${igUser} sudah ada di database.`);
+              continue; // Langsung lompat ke talent berikutnya (i++)
+            }
+          } catch (e) {
+            console.error("Gagal verifikasi duplikat, lanjut import...");
+          }
+        }
+        const ttUser = String(row["Username_Tiktok"] || "")
+          .replace("@", "")
+          .trim();
 
         let igData = { followers: "0", er: "0.00%", tier: "Nano" };
         let ttData = { followers: "0" };
 
-        // --- B. Fetch Instagram ---
-        if (igUser && igUser !== "-" && igUser !== "N/A") {
-          try {
-            const res = await fetch(`/API/instagram?username=${igUser}`);
-            if (res.ok) {
-              const resJson = await res.json();
-              igData = {
-                followers: String(resJson.followers || "0"),
-                er: resJson.er || "0.00%",
-                tier: resJson.tier || "Nano",
-              };
-            }
-          } catch (e) { console.warn(`IG Skip: ${igUser}`); }
-        }
+        // // --- B. Fetch Instagram ---
+        // if (igUser && igUser !== "-" && igUser !== "N/A") {
+        //   try {
+        //     const res = await fetch(`/API/instagram?username=${igUser}`);
+        //     if (res.ok) {
+        //       const resJson = await res.json();
+        //       igData = {
+        //         followers: String(resJson.followers || "0"),
+        //         er: resJson.er || "0.00%",
+        //         tier: resJson.tier || "Nano",
+        //       };
+        //     }
+        //   } catch (e) {
+        //     console.warn(`IG Skip: ${igUser}`);
+        //   }
+        // }
 
-        // --- C. Fetch TikTok ---
-        if (ttUser && ttUser !== "-" && ttUser !== "N/A") {
-          try {
-            const res = await fetch(`/API/tiktok?username=${ttUser}`);
-            if (res.ok) {
-              const resJson = await res.json();
-              ttData = { followers: String(resJson.followers || "0") };
-            }
-          } catch (e) { console.warn(`TT Skip: ${ttUser}`); }
-        }
+        // // --- C. Fetch TikTok ---
+        // if (ttUser && ttUser !== "-" && ttUser !== "N/A") {
+        //   try {
+        //     const res = await fetch(`/API/tiktok?username=${ttUser}`);
+        //     if (res.ok) {
+        //       const resJson = await res.json();
+        //       ttData = { followers: String(resJson.followers || "0") };
+        //     }
+        //   } catch (e) {
+        //     console.warn(`TT Skip: ${ttUser}`);
+        //   }
+        // }
 
         // --- D. Final Variables (Prioritas API, Fallback Excel) ---
-        const igFollowersFinal = igData.followers !== "0" ? igData.followers : safeNum(row["Followers_Instagram"]);
-        const ttFollowersFinal = ttData.followers !== "0" ? ttData.followers : safeNum(row["Followers_Tiktok"]);
+        const igFollowersFinal =
+          igData.followers !== "0"
+            ? igData.followers
+            : safeNum(row["Followers_Instagram"]);
+        const ttFollowersFinal =
+          ttData.followers !== "0"
+            ? ttData.followers
+            : safeNum(row["Followers_Tiktok"]);
 
         // --- E. Payload Sesuai Struktur Database ---
         const payload = {
@@ -245,21 +280,25 @@ const safeNum = (val: any) => {
           youtube_subscriber: safeNum(row["YouTube Subscribers"]),
           contact_person: String(row["Phone Number"] || "-"),
           ethnicity: String(row["Ethnic"] || "-"),
-          religion: String(row["Religion"] || "Other"),
+          religion: String(row["Religion"] || "-"),
           reason_for_joining: String(row["reasons to be a talent"] || "-"),
           hobby: String(row["Hobby"] || "-"),
-          age: safeNum(row["Age"]),
+          age: safeNum(row["Age"] || "-"),
           occupation: String(row["Work"] || "-"),
           zodiac: String(row["Zodiac"] || "-"),
           university: String(row["college"] || "-"),
-          category: String(row["Category"] || "Beauty"),
+          category: String(row["Category"] || "-"),
           rate_card: safeNum(row["Rate Card"]),
           status: "active",
           tier: igData.tier,
-          er: igData.er,
+          er: igData.er || "0.00%",
           last_update: new Date().toISOString(),
           email: String(row["Email Address"] || row["Email"] || "-"),
-          hijab: String(row["Hijab Status"] || row["Hijab/Non"] || "no").toLowerCase().includes("yes") ? "yes" : "no",
+          hijab: String(row["Hijab Status"] || row["Hijab/Non"] || "-")
+            .toLowerCase()
+            .includes("yes")
+            ? "yes"
+            : "no",
           gender: String(row["Gender"] || "-"),
           source: String(row.finalSource || "-"),
         };
@@ -270,7 +309,6 @@ const safeNum = (val: any) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-
       } catch (err) {
         console.error(`Gagal baris ${i + 1}:`, err);
       }
@@ -282,12 +320,9 @@ const safeNum = (val: any) => {
     // --- FINISH ---
     if (!isCancelledRef.current) {
       handleCancelImport(); // Bersih-bersih storage & Progress Bar
-      alert("Semua data berhasil di-import!");
     }
   };
 
-
-  // --- 3. EFFECT UNTUK RESUME (PENTING: Cek startIndex) ---
   useEffect(() => {
     const savedData = localStorage.getItem("pending_import_data");
     const savedIndex = localStorage.getItem("pending_import_index");
@@ -332,15 +367,13 @@ const safeNum = (val: any) => {
       return "Never";
 
     try {
-      // 1. Cek apakah formatnya DD-MM-YYYY (pake strip)
-      // Kita pecah: "22-01-2026 16:29:52" -> ["22", "01", "2026 16:29:52"]
       const parts = dateString.split("-");
 
       let date;
       if (parts.length === 3) {
         const day = parts[0];
         const month = parts[1];
-        const yearWithTime = parts[2]; // "2026 16:29:52"
+        const yearWithTime = parts[2];
 
         const formattedForJS = `${yearWithTime.split(" ")[0]}-${month}-${day} ${yearWithTime.split(" ")[1]}`;
         date = new Date(formattedForJS);
@@ -381,7 +414,7 @@ const safeNum = (val: any) => {
     }
   };
 
-const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -407,11 +440,10 @@ const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
           allCleanData = [...allCleanData, ...cleanDataPerSheet];
         });
 
-        if (allCleanData.length === 0) return alert("File kosong atau format salah!");
+        if (allCleanData.length === 0)
+          return alert("File kosong atau format salah!");
 
-        // --- INI KUNCINYA: Panggil fungsi processImport, jangan bikin loop lagi di sini ---
         processImport(allCleanData);
-
       } catch (err) {
         console.error(err);
         alert("Error saat import.");
@@ -618,12 +650,12 @@ const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
                 "TT: Nano",
               ]}
             />
-            <FilterSelect
+            {/* <FilterSelect
               placeholder="All Age"
               value={selectedAgeRange}
               onChange={setSelectedAgeRange}
               options={["10-20", "21-30", "31-40", "41-50", "51++"]}
-            />
+            /> */}
             <FilterSelect
               placeholder="All Religion"
               value={selectedReligion}
@@ -636,6 +668,7 @@ const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
                 "Buddha",
                 "Khonghucu",
                 "Other",
+                "-",
               ]}
             />
             {/* <FilterSelect
@@ -782,9 +815,19 @@ const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
                   {selectedDetail.name[0]}
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-[#1B3A5B] mb-1">
-                    {selectedDetail.name}
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    {/* Nama Utama */}
+                    <h3 className="text-2xl font-black text-[#1B3A5B]">
+                      {selectedDetail.name}
+                    </h3>
+
+                    {/* Badge Source (Artist/Celebrity, Influencer, dll) */}
+                    <span
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${getSourceStyle(selectedDetail.source)}`}
+                    >
+                      {selectedDetail.source}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5 mt-2 text-slate-400">
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-0.5 bg-slate-100 text-[#1B3A5B] text-[10px] font-bold rounded-md uppercase tracking-wider">
@@ -847,11 +890,10 @@ const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
                       <p className="text-xs font-bold text-slate-300">-</p>
                     )}
                   </div>
-                  {/* TIER CLASS SUDAH DIHAPUS DARI SINI */}
-                  <DetailItem
+                  {/* <DetailItem
                     label="Age"
                     value={`${selectedDetail.umur} Years Old`}
-                  />
+                  /> */}
                   <DetailItem label="Ethnicity" value={selectedDetail.suku} />
                   <DetailItem label="Religion" value={selectedDetail.agama} />
                   <DetailItem label="Zodiac" value={selectedDetail.zodiac} />

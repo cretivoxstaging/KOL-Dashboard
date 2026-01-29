@@ -120,13 +120,13 @@ export default function AddTalentModal({
                 placeholder="Ahmad..."
                 onChange={(v: string) => setFormData({ ...formData, name: v })}
               />
-              <Input
+              {/* <Input
                 label="Age"
                 type="number"
                 value={formData.umur}
                 placeholder="20"
                 onChange={(v: string) => setFormData({ ...formData, umur: v })}
-              />
+              /> */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase">
                   Zodiac

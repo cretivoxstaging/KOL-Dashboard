@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-// Fungsi helper untuk menentukan Tier berdasarkan jumlah followers
 const calculateTier = (followers: number) => {
   if (followers >= 1000000) return "Mega";
   if (followers >= 100000) return "Macro";
@@ -8,95 +7,118 @@ const calculateTier = (followers: number) => {
   return "Nano";
 };
 
+const calculateER = (edges: any[], followers: number) => {
+  if (!edges || edges.length === 0 || !followers || followers === 0) return "0.00%";
+  const totalInteraction = edges.reduce((acc: number, item: any) => {
+    const node = item.node || item;
+    // Mapping likes & comments buat provider 120
+    const likes = node.like_count || node.edge_liked_by?.count || node.likes || 0;
+    const comments = node.comment_count || node.edge_media_to_comment?.count || node.comments || 0;
+    return acc + likes + comments;
+  }, 0);
+  const avgInteraction = totalInteraction / edges.length;
+  const erValue = (avgInteraction / followers) * 100;
+  return isNaN(erValue) ? "0.00%" : erValue.toFixed(2) + "%";
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const username = searchParams.get("username")?.replace("@", "").trim();
   const id = searchParams.get("id");
 
-  // 1. Validasi Input
-  if (!username) {
-    return NextResponse.json({ error: "Username wajib ada!" }, { status: 400 });
-  }
+  if (!username) return NextResponse.json({ error: "Username wajib!" }, { status: 400 });
 
-  // 2. Ambil Config dari ENV
   const RAPID_KEY = process.env.RAPIDAPI_KEY;
-  const DB_URL = process.env.TALENT_URL;
-  const DB_TOKEN = process.env.TALENT_TOKEN;
 
-  if (!RAPID_KEY) {
-    return NextResponse.json({ error: "RAPIDAPI_KEY belum di-set di .env.local" }, { status: 500 });
-  }
+  // --- CONFIG PROVIDER 120 (Endpoint Info & Posts Harus Beda) ---
+  const p120 = {
+    name: "Instagram 120",
+    host: "instagram120.p.rapidapi.com",
+    profileUrl: "https://instagram120.p.rapidapi.com/api/instagram/user/info",
+    postsUrl: "https://instagram120.p.rapidapi.com/api/instagram/posts"
+  };
 
   try {
-    // 3. Tembak RapidAPI menggunakan endpoint Profile by URL
-    const targetUrl = `https://www.instagram.com/${username}/`;
-    
-    const apiRes = await fetch(
-      `https://instagram-statistics-api.p.rapidapi.com/community?url=${encodeURIComponent(targetUrl)}`,
-      {
-        method: "GET",
-        headers: {
-          "X-RapidAPI-Key": RAPID_KEY,
-          "X-RapidAPI-Host": "instagram-statistics-api.p.rapidapi.com",
-        },
-        next: { revalidate: 0 }, // Pastikan tidak ambil cache lama
-      }
-    );
+    console.log(`[IG Sync] Mencoba ${p120.name} untuk: ${username}`);
 
-    const result = await apiRes.json();
+    // 1. AMBIL PROFILE (Buat dapet Followers)
+    const profileRes = await fetch(p120.profileUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-rapidapi-host': p120.host,
+        'x-rapidapi-key': RAPID_KEY || ''
+      },
+      body: JSON.stringify({ username: username }),
+    });
 
-    // 4. Ambil angka followers dari field 'usersCount' (berdasarkan debug sebelumnya)
-    const followersCount = result.data?.usersCount || result.usersCount;
-
-    if (followersCount !== undefined && followersCount !== null) {
-      const finalFollowers = Math.floor(Number(followersCount));
-      const newTier = calculateTier(finalFollowers);
-
-      // 5. Update ke Database Pusat lo (TALENT_URL) jika ada parameter 'id'
-      if (id && id !== "undefined" && DB_URL) {
-        try {
-          const updateRes = await fetch(`${DB_URL}/${id}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${DB_TOKEN}`,
-            },
-            body: JSON.stringify({
-              instagram_followers: String(finalFollowers),
-              tier_ig: newTier,
-              tier: newTier, // Menyamakan tier utama dengan tier IG
-              last_update: new Date().toISOString(),
-              source: "RapidAPI",
-            }),
-          });
-
-          if (!updateRes.ok) {
-            console.error("Gagal update ke Database Pusat");
-          }
-        } catch (dbErr) {
-          console.error("DB Error:", dbErr);
-        }
-      }
-
-      // 6. Respon balik ke Frontend
-      return NextResponse.json({
-        success: true,
-        username: username,
-        followers: finalFollowers,
-        tier: newTier,
-        source: "RapidAPI",
-        last_update: new Date().toISOString()
-      });
+    if (!profileRes.ok) {
+      console.error(`[IG Sync] Profile 120 Fail: ${profileRes.status}`);
+      return NextResponse.json({ error: "API 120 Profile Limit/Error" }, { status: profileRes.status });
     }
 
-    // Jika JSON dapet tapi field usersCount ga ada
-    return NextResponse.json(
-      { error: "Data followers tidak ditemukan", received_json: result },
-      { status: 404 }
-    );
+    const profData = await profileRes.json();
+    
+    // Debugging struktur data (liat di terminal)
+    // console.log("Raw Data 120:", JSON.stringify(profData).substring(0, 500));
 
-  } catch (error: any) {
-    console.error("RapidAPI Router Error:", error.message);
-    return NextResponse.json({ error: "Server error: " + error.message }, { status: 500 });
+    // Parsing Followers 120 (Biasanya ada di result atau data)
+    const userData = profData.result || profData.data || profData;
+    const followers = Number(userData?.follower_count || userData?.followers || 0);
+
+    if (followers === 0) {
+      return NextResponse.json({ error: "Followers tidak ditemukan di 120" }, { status: 404 });
+    }
+
+    // 2. AMBIL POSTS (Buat dapet ER)
+    let allEdges: any[] = [];
+    const postsRes = await fetch(p120.postsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-rapidapi-host': p120.host,
+        'x-rapidapi-key': RAPID_KEY || ''
+      },
+      body: JSON.stringify({ username: username }),
+    });
+
+    if (postsRes.ok) {
+      const postsData = await postsRes.json();
+      allEdges = postsData.result?.edges || postsData.edges || postsData.data?.edges || [];
+    }
+
+    const finalER = calculateER(allEdges, followers);
+    const newTier = calculateTier(followers);
+
+    // 3. Update Database Pusat
+    if (id && id !== "undefined" && process.env.TALENT_URL) {
+      try {
+        await fetch(`${process.env.TALENT_URL}/${id}`, {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json", 
+            "Authorization": `Bearer ${process.env.TALENT_TOKEN}` 
+          },
+          body: JSON.stringify({
+            instagram_followers: String(followers),
+            tier_ig: newTier,
+            er: finalER,
+            last_update: new Date().toISOString()
+          })
+        });
+      } catch (e) { console.error("DB Update Fail"); }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      followers, 
+      er: finalER, 
+      tier: newTier, 
+      provider: p120.name 
+    });
+
+  } catch (err: any) {
+    console.error("[IG Sync] Fatal Error:", err.message);
+    return NextResponse.json({ error: "Server Error" }, { status: 500 });
   }
 }

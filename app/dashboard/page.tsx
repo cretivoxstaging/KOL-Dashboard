@@ -1,21 +1,30 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { LayoutDashboard, Users, Calculator, LogOut, Menu } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Calculator,
+  LogOut,
+  Menu,
+  FileText,
+} from "lucide-react";
 
 import DashboardView from "../../components/DashboardView";
 import TalentView from "../../components/TalentView";
 import AddTalentModal from "../../components/AddTalentModal";
 import TaxCalculatorView from "../../components/TaxCalculatorView";
+import SPKView from "@/components/SPKview";
+import SPKview from "@/components/SPKview";
 
 // Interface untuk TypeScript agar tidak merah
 interface Talent {
   id: number;
   name: string;
-  tier_ig?: string; // Baru
-  tier_tiktok?: string; // Baru
-  er?: string; // Baru
-  source?: string;
+  tier_ig: string;
+  tier_tiktok: string;
+  er: string;
+  source: string;
   domisili: string;
   igAccount: string;
   igFollowers: number;
@@ -45,9 +54,9 @@ interface Talent {
 }
 
 export default function Page() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "talent" | "tax">(
-    "dashboard",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "dashboard" | "talent" | "tax" | "SPK"
+  >("dashboard");
   const [talents, setTalents] = useState<Talent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -309,44 +318,55 @@ export default function Page() {
       let currentIgFollowers = formData.igFollowers;
       let currentIgTier = formData.tier_ig;
 
+
       // Inisialisasi data TikTok
       let currentTtFollowers = formData.tiktokFollowers;
       let currentTtTier = formData.tier_tiktok;
 
-      // JALANKAN SYNC OTOMATIS HANYA SAAT ADD NEW TALENT (Bukan Edit)
+      // Cek perubahan IG & TikTok (Add & Edit)
+      // IG: Sync jika add baru atau username IG berubah
+      let shouldSyncIg = false;
       if (!talentToEdit) {
-        // 1. Sinkronisasi Instagram
-        if (formData.igAccount && formData.igAccount !== "-") {
-          try {
-            const usernameIg = formData.igAccount.replace("@", "").trim();
-            const resIg = await fetch(`/API/instagram?username=${usernameIg}`);
-            const dataIg = await resIg.json();
+        shouldSyncIg = !!(formData.igAccount && formData.igAccount !== "-");
+      } else if (talentToEdit.igAccount !== formData.igAccount) {
+        shouldSyncIg = !!(formData.igAccount && formData.igAccount !== "-");
+      }
 
-            if (dataIg.success) {
-              currentIgFollowers = dataIg.followers;
-              currentIgTier = dataIg.tier;
-              console.log("Auto-sync IG Success:", dataIg.followers);
-            }
-          } catch (err) {
-            console.warn("Auto-sync IG failed.");
+      if (shouldSyncIg) {
+        try {
+          const usernameIg = formData.igAccount.replace("@", "").trim();
+          const resIg = await fetch(`/API/instagram?username=${usernameIg}`);
+          const dataIg = await resIg.json();
+          if (dataIg.success) {
+            currentIgFollowers = dataIg.followers;
+            currentIgTier = dataIg.tier;
+            console.log("Auto-sync IG Success:", dataIg.followers);
           }
+        } catch (err) {
+          console.warn("Auto-sync IG failed.");
         }
+      }
 
-        // 2. Sinkronisasi TikTok (TAMBAHKAN INI)
-        if (formData.tiktokAccount && formData.tiktokAccount !== "-") {
-          try {
-            const usernameTt = formData.tiktokAccount.replace("@", "").trim();
-            const resTt = await fetch(`/API/tiktok?username=${usernameTt}`);
-            const dataTt = await resTt.json();
+      // TikTok: Sync jika add baru atau username TikTok berubah
+      let shouldSyncTiktok = false;
+      if (!talentToEdit) {
+        shouldSyncTiktok = !!(formData.tiktokAccount && formData.tiktokAccount !== "-");
+      } else if (talentToEdit.tiktokAccount !== formData.tiktokAccount) {
+        shouldSyncTiktok = !!(formData.tiktokAccount && formData.tiktokAccount !== "-");
+      }
 
-            if (dataTt.success) {
-              currentTtFollowers = dataTt.followers;
-              currentTtTier = dataTt.tier;
-              console.log("Auto-sync TikTok Success:", dataTt.followers);
-            }
-          } catch (err) {
-            console.warn("Auto-sync TikTok failed.");
+      if (shouldSyncTiktok) {
+        try {
+          const usernameTt = formData.tiktokAccount.replace("@", "").trim();
+          const resTt = await fetch(`/API/tiktok?username=${usernameTt}`);
+          const dataTt = await resTt.json();
+          if (dataTt.success) {
+            currentTtFollowers = dataTt.followers;
+            currentTtTier = dataTt.tier;
+            console.log("Auto-sync TikTok Success:", dataTt.followers);
           }
+        } catch (err) {
+          console.warn("Auto-sync TikTok failed.");
         }
       }
 
@@ -465,7 +485,17 @@ export default function Page() {
   }
 
   return (
-    <div className="flex h-screen w-screen bg-[#F0F4F8] overflow-x-hidden font-sans text-slate-700">
+    <div className="flex h-screen w-screen bg-[#F0F4F8] overflow-x-hidden font-sans text-slate-700 relative">
+      {/* Tombol menu di header utama (mobile/tablet) */}
+      <button
+        onClick={() => setIsSidebarOpen(true)}
+        className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg transition-colors lg:hidden"
+        aria-label="Open menu"
+        style={{ display: isSidebarOpen ? 'none' : 'block' }}
+      >
+        <Menu size={28} />
+      </button>
+
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/20 z-40 lg:hidden"
@@ -486,15 +516,26 @@ export default function Page() {
             isSidebarCollapsed ? "justify-center" : "justify-between"
           }`}
         >
+          {/* Logo */}
           {!isSidebarCollapsed && (
             <h1 className="text-xl font-bold tracking-tight uppercase">KOL</h1>
           )}
 
+          {/* Tombol Minimize Sidebar (Desktop) */}
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors hidden lg:block"
           >
             <Menu size={20} />
+          </button>
+
+          {/* Tombol Menu (Mobile/Tablet) */}
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors lg:hidden ml-auto"
+            aria-label="Open menu"
+          >
+            <Menu size={24} />
           </button>
         </div>
 
@@ -520,6 +561,13 @@ export default function Page() {
             collapsed={isSidebarCollapsed}
             onClick={() => setActiveTab("tax")}
           />
+          <SidebarItem
+            icon={<FileText size={20} />}
+            label="SPK"
+            active={activeTab === "SPK"}
+            collapsed={isSidebarCollapsed}
+            onClick={() => setActiveTab("SPK")}
+          />
         </nav>
 
         {/* Tombol Logout */}
@@ -536,7 +584,7 @@ export default function Page() {
         </div>
       </aside>
 
-      <main className="flex-1 h-full overflow-y-auto bg-[#F8FAFC]">
+      <main className={`flex-1 w-full bg-[#F8FAFC] overflow-x-hidden ${activeTab === 'tax' ? 'h-screen overflow-hidden' : 'h-screen overflow-y-auto'}`}> 
         {isLoading ? (
           <div className="flex flex-col h-full items-center justify-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1B3A5B]"></div>
@@ -544,53 +592,58 @@ export default function Page() {
           </div>
         ) : (
           <>
-            <div className="p-8">
-              {activeTab === "dashboard" && (
-                <DashboardView
-                  talents={talents}
-                  impressionData={impressionData}
-                />
-              )}
-              {activeTab === "talent" && (
-                <>
-                  <TalentView
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                    selectedCategory={selectedCategory}
-                    setSelectedCategory={setSelectedCategory}
-                    filteredTalent={filteredAndSortedTalents}
-                    onAddClick={() => setIsModalOpen(true)}
-                    onDelete={handleDeleteTalent}
-                    onUpdate={handleOpenEdit}
-                    onRefresh={handleRefresh}
-                    isLoading={isLoading}
-                    sortBy={sortBy}
-                    setSortBy={setSortBy}
-                    selectedSource={selectedSource}
-                    setSelectedSource={setSelectedSource}
-                    selectedReligion={selectedReligion}
-                    setSelectedReligion={setSelectedReligion}
-                    selectedStatus={selectedStatus}
-                    setSelectedStatus={setSelectedStatus}
-                    selectedTier={selectedTier}
-                    setSelectedTier={setSelectedTier}
-                    selectedAgeRange={selectedAgeRange}
-                    setSelectedAgeRange={setSelectedAgeRange}
+            {activeTab === "dashboard" || activeTab === "talent" ? (
+              <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+                {activeTab === "dashboard" && (
+                  <DashboardView
+                    talents={talents}
+                    impressionData={impressionData}
                   />
-                  {isModalOpen && (
-                    <AddTalentModal
-                      onClose={() => {
-                        setIsModalOpen(false);
-                        setTalentToEdit(null);
-                      }}
-                      onSave={handleSaveTalent}
-                      initialData={talentToEdit}
+                )}
+                {activeTab === "talent" && (
+                  <>
+                    <TalentView
+                      searchTerm={searchTerm}
+                      setSearchTerm={setSearchTerm}
+                      selectedCategory={selectedCategory}
+                      setSelectedCategory={setSelectedCategory}
+                      filteredTalent={filteredAndSortedTalents}
+                      onAddClick={() => setIsModalOpen(true)}
+                      onDelete={handleDeleteTalent}
+                      onUpdate={handleOpenEdit}
+                      onRefresh={handleRefresh}
+                      isLoading={isLoading}
+                      sortBy={sortBy}
+                      setSortBy={setSortBy}
+                      selectedSource={selectedSource}
+                      setSelectedSource={setSelectedSource}
+                      selectedReligion={selectedReligion}
+                      setSelectedReligion={setSelectedReligion}
+                      selectedStatus={selectedStatus}
+                      setSelectedStatus={setSelectedStatus}
+                      selectedTier={selectedTier}
+                      setSelectedTier={setSelectedTier}
+                      selectedAgeRange={selectedAgeRange}
+                      setSelectedAgeRange={setSelectedAgeRange}
+                      isSidebarOpen={isSidebarOpen}
+                      isSidebarCollapsed={isSidebarCollapsed}
                     />
-                  )}
-                </>
-              )}
-            </div>
+                    {isModalOpen && (
+                      <AddTalentModal
+                        onClose={() => {
+                          setIsModalOpen(false);
+                          setTalentToEdit(null);
+                        }}
+                        onSave={handleSaveTalent}
+                        initialData={talentToEdit}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+            ) : null}
             {activeTab === "tax" && <TaxCalculatorView />}
+            <div className="p-3 sm:p-4 md:p-6 lg:p-8">{activeTab === "SPK" && <SPKview />}</div>
           </>
         )}
       </main>

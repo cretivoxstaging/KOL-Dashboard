@@ -74,6 +74,8 @@ interface TalentViewProps {
   setSelectedStatus: (val: string) => void;
   onRefresh: () => void;
   isLoading: boolean;
+  isSidebarOpen: boolean;
+  isSidebarCollapsed: boolean;
 }
 
 export default function TalentView({
@@ -99,6 +101,8 @@ export default function TalentView({
   setSelectedSource,
   onRefresh,
   isLoading,
+  isSidebarOpen,
+  isSidebarCollapsed,
 }: TalentViewProps) {
   const [selectedDetail, setSelectedDetail] = useState<Talent | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -686,16 +690,24 @@ export default function TalentView({
             /> */}
           </div>
           <div className="ml-auto flex gap-4">
-            <div className="relative group">
+            <div
+              className={`relative group transition-opacity duration-300 ${selectedDetail ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
               <input
                 type="file"
                 accept=".xlsx, .xls"
                 onChange={handleImportExcel}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                title="Import Data"
+                disabled={!!selectedDetail}
+                className={`absolute inset-0 w-full h-full opacity-0 z-10 ${selectedDetail ? "cursor-not-allowed" : "cursor-pointer"}`}
+                title={
+                  selectedDetail ? "Close detail to import" : "Import Data"
+                }
               />
-              <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all group-hover:scale-105">
-                <Download size={18} className="" />{" "}
+              <button
+                disabled={!!selectedDetail}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all group-hover:scale-105 disabled:hover:scale-100"
+              >
+                <Download size={18} />
               </button>
             </div>
             <button
@@ -804,11 +816,15 @@ export default function TalentView({
         </table>
       </div>
 
-      {/* ================= MODAL DETAIL POP-UP ================= */}
+      {/* Modal detail talent */}
       {selectedDetail && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide">
-            {/* HEADER MODAL */}
+        <div
+          className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center p-4 animate-in fade-in duration-300`}
+        >
+          <div
+            className={`bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide xl:ml-100 2xl:ml-120` }
+          >
+            {/* Header modal */}
             <div className="flex justify-between items-start mb-8">
               <div className="flex gap-4">
                 <div className="w-20 h-20 rounded-2xl bg-[#1B3A5B] flex items-center justify-center text-3xl font-bold text-white uppercase shadow-lg shadow-[#1B3A5B]/20">
@@ -852,22 +868,22 @@ export default function TalentView({
               </div>
               <button
                 onClick={() => setSelectedDetail(null)}
-                className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-700"
               >
                 <Plus size={24} className="rotate-45" />
               </button>
             </div>
 
-            {/* BODY MODAL: GRID 2 KOLOM */}
+            {/* Body modal: grid 2 kolom */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-              {/* KOLOM KIRI: PERSONAL INFO */}
+              {/* Kolom kiri: personal info */}
               <div className="space-y-5">
-                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                <h4 className="text-[11px] font-bold text-black uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
                   Personal Information
                 </h4>
                 <div className="grid grid-cols-2 gap-y-4 gap-x-2">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">
+                    <p className="text-[10px] font-bold uppercase tracking-tighter mb-0.5">
                       Contact Person
                     </p>
                     {selectedDetail.contactPerson ? (
@@ -920,16 +936,12 @@ export default function TalentView({
                       selectedDetail.hijab === "yes" ? "Hijab" : "Non-Hijab"
                     }
                   />
-                  <DetailItem
-                    label="Engagement Rate"
-                    value={selectedDetail.er || "-"}
-                  />
                 </div>
               </div>
 
-              {/* KOLOM KANAN: BUSINESS & SOCIALS */}
+              {/* Kolom kanan: business & socials */}
               <div className="space-y-5">
-                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                <h4 className="text-[11px] font-bold text-black uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
                   Social Media & Business
                 </h4>
 
@@ -937,22 +949,36 @@ export default function TalentView({
                 <div className="space-y-4">
                   {/* INSTAGRAM CARD */}
                   <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    {/* TIER BADGE */}
                     <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md uppercase tracking-tighter">
                       {selectedDetail.tier_ig || "Nano"}
                     </div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
-                      Instagram Profile
-                    </p>
+
+                    {/* HEADER LINE: Label & ER */}
+                    <div className="flex gap-2 items-center mb-1">
+                      <p className="text-[9px] font-bold text-slate-700 uppercase">
+                        Instagram Profile
+                      </p>
+                      {/* ER Badge di samping tulisan Instagram Profile */}
+                      <span className="text-[9px] font-black text-orange-600 bg-orange-100/50 px-1.5 py-0.5 rounded border border-orange-200 uppercase">
+                        ER: {selectedDetail.er || "0.00%"}
+                      </span>
+                    </div>
+
+                    {/* LINK & FOLLOWERS */}
                     <a
                       href={`https://instagram.com/${selectedDetail.igAccount.replace("@", "")}`}
                       target="_blank"
                       className="text-sm font-bold text-blue-600 flex items-center gap-2 hover:underline"
                     >
-                      <Instagram size={16} /> {selectedDetail.igAccount}
-                      <span className="text-[11px] text-slate-400 font-medium">
-                        ({selectedDetail.igFollowers.toLocaleString()}{" "}
-                        followers)
-                      </span>
+                      <Instagram size={16} />
+                      <div className="flex items-baseline gap-1.5">
+                        <span>{selectedDetail.igAccount}</span>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          ({selectedDetail.igFollowers?.toLocaleString()}{" "}
+                          followers)
+                        </span>
+                      </div>
                     </a>
                   </div>
 
@@ -961,7 +987,7 @@ export default function TalentView({
                     <div className="absolute -top-2 -right-2 bg-pink-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md uppercase tracking-tighter">
                       {selectedDetail.tier_tiktok || "Nano"}
                     </div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
+                    <p className="text-[9px] font-bold text-slate-700 uppercase mb-1">
                       TikTok Profile
                     </p>
                     <a
@@ -987,7 +1013,7 @@ export default function TalentView({
 
                   {/* YOUTUBE CARD */}
                   <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
+                    <p className="text-[9px] font-bold text-slate-700 uppercase mb-1">
                       Channel YouTube
                     </p>
                     <a
@@ -1010,7 +1036,7 @@ export default function TalentView({
 
                   {/* BUSINESS EMAIL CARD */}
                   <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">
+                    <p className="text-[9px] font-bold text-slate-00 uppercase mb-1">
                       Business Email
                     </p>
                     {selectedDetail.email && selectedDetail.email !== "-" ? (
@@ -1290,10 +1316,10 @@ export default function TalentView({
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">
+      <p className="text-[10px] font-bold text-slate-800 uppercase tracking-tighter mb-0.5">
         {label}
       </p>
-      <p className="text-xs font-bold text-slate-700">{value || "-"}</p>
+      <p className="text-xs font-bold text-slate-600">{value || "-"}</p>
     </div>
   );
 }
@@ -1408,7 +1434,7 @@ function TalentRow({
           </div>
         </div>
       </td>
-      <td className="p-5">
+      <td className="">
         <span
           className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${getSourceStyle(t.source)}`}
         >

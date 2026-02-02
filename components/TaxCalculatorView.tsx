@@ -4,10 +4,13 @@ export default function TaxCalculatorView() {
   const EXTERNAL_CALCULATOR_URL = "https://tax-kol-calculator.vercel.app/";
 
   return (
-      <iframe 
+    <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, position: 'relative', left: 'calc(-50vw + 50%)' }}>
+      <iframe
         src={EXTERNAL_CALCULATOR_URL}
-        className="w-full h-full"
+        style={{ width: '100vw', height: '100vh', border: 'none', margin: 0, padding: 0 }}
         title="Tax Calculator"
+        allowFullScreen
       />
+    </div>
   );
 }

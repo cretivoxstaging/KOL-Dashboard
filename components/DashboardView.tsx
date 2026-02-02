@@ -1,6 +1,16 @@
 "use client";
 import React from "react";
-import { Users, Cake, TrendingUp, UserX, UserCheck } from "lucide-react";
+import {
+  Users,
+  Cake,
+  TrendingUp,
+  UserX,
+  UserCheck,
+  Compass,
+  Share2,
+  Instagram,
+} from "lucide-react";
+import { SiTiktok } from "react-icons/si";
 import { AreaChart, Area } from "recharts";
 import {
   PieChart,
@@ -71,7 +81,40 @@ export default function DashboardView({
     total: (rateRanges as any)[key],
   }));
 
-  // --- LOGIKA RELIGION DISTRIBUTION ---
+  // Hitung distribusi IG
+  const igTiers = talents.reduce(
+    (acc, t) => {
+      const tier = t.tier_ig || "Nano";
+      acc[tier] = (acc[tier] || 0) + 1;
+      return acc;
+    },
+    { Mega: 0, Macro: 0, Micro: 0, Nano: 0 },
+  );
+
+  // Hitung distribusi TikTok
+  const ttTiers = talents.reduce(
+    (acc, t) => {
+      const tier = t.tier_tiktok || "Nano";
+      acc[tier] = (acc[tier] || 0) + 1;
+      return acc;
+    },
+    { Mega: 0, Macro: 0, Micro: 0, Nano: 0 },
+  );
+
+  const total = talents.length || 1;
+
+  // --- LOGIKA GENDER DISTRIBUTION ---
+  const genderCounts = talents.reduce((acc: any, curr) => {
+    const gender = curr.gender || "Other";
+    acc[gender] = (acc[gender] || 0) + 1;
+    return acc;
+  }, {});
+
+  const genderData = Object.keys(genderCounts).map((key) => ({
+    name: key,
+    value: genderCounts[key],
+  }));
+
   const religionCounts = talents.reduce((acc: any, curr) => {
     const rel = curr.agama || "Other";
     acc[rel] = (acc[rel] || 0) + 1;
@@ -133,6 +176,23 @@ export default function DashboardView({
     value: (ageGroups as any)[key],
   }));
 
+  const sourceData = talents.reduce((acc: any[], curr) => {
+    const source = curr.source || "Manual";
+    const existing = acc.find((item) => item.name === source);
+    if (existing) {
+      existing.value += 1;
+    } else {
+      acc.push({ name: source, value: 1 });
+    }
+    return acc;
+  }, []);
+
+  // Hitung persentase source terbanyak untuk label di bawah
+  const topSource =
+    sourceData.length > 0
+      ? sourceData.sort((a, b) => b.value - a.value)[0].name
+      : "-";
+
   // 4. Logika Domisili & Category (Tetap dipertahankan untuk baris 3)
   const domisiliMap = talents.reduce((acc: any, curr) => {
     const loc = curr.domisili || "Unknown";
@@ -185,112 +245,114 @@ export default function DashboardView({
         <h2 className="text-2xl font-bold text-[#1B3A5B]">
           Executive Overview
         </h2>
-        <p className="text-sm text-slate-400">
-          Total Database:{" "}
-          <span className="font-bold text-slate-700">
-            {talents.length} Talents
-          </span>
-        </p>
       </div>
 
-      {/* ROW 1: STATS CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Talents"
-          value={talents.length}
-          icon={<Users size={20} />}
-          color="bg-blue-50 text-blue-600"
-        />
-        <StatCard
-          title="Talent Availability"
-          value={
-            <div className="flex items-center gap-6 mt-1">
-              {/* Bagian Aktif */}
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold text-slate-800">
+      {/* ROW 1: TOP STATS & TIERING */}
+      <div className="grid grid-cols-12 gap-4 mb-8 items-stretch">
+        {/* KOLOM KIRI: TOTAL & AVAILABILITY (Dijejerin Vertikal) */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
+          {/* Card 1: Total Talents */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between h-full">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                Total Talents
+              </p>
+              <div className="text-3xl font-black text-slate-800">
+                {talents.length}
+              </div>
+            </div>
+            <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
+              <Users size={24} />
+            </div>
+          </div>
+
+          {/* Card 2: Talent Availability */}
+          <div className="flex flex-col justify-center h-full">
+            <div className="flex items-center w-full">
+              <div className=" bg-white rounded-2xl border-slate-100 p-6 shadow-sm flex-1 flex flex-col items-center">
+                <span className="text-2xl font-black text-slate-800 mb-2">
                   {activeCount}
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                <span className="text-[10px] font-bold uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
                   Active
                 </span>
               </div>
-
-              {/* Pembatas Garis Halus */}
-              <div className="h-10 bg-slate-200" />
-
-              {/* Bagian Nonaktif */}
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold text-slate-800">
+              <div className="w-px h-10 bg-slate-100 mx-4 shrink-0" />
+              <div className="bg-white rounded-2xl border-slate-100 p-6 shadow-sm flex-1 flex flex-col items-center">
+                <span className="text-2xl font-black text-slate-800 mb-2">
                   {inactiveCount}
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
+                <span className="text-[10px] font-bold uppercase text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
                   Inactive
                 </span>
               </div>
             </div>
-          }
-          icon={<Users size={20} />}
-          color="bg-slate-50 text-slate-600"
-        />
-        {/* CARD: TALENT COMPOSITION */}
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center h-full col-span-1 md:col-span-2">
-          {/* BAGIAN KIRI: RINGKASAN */}
-          <div className="flex flex-col justify-center pr-10 border-r border-slate-100">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 mb-3">
-              <Users size={20} />
-            </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-              Talent Composition
-            </p>
           </div>
-          {/* BAGIAN KANAN: BARIS PROGRESS (2 KOLOM RAPI) */}
-          <div className="flex-1 pl-10">
-            <div className="grid grid-cols-2 gap-x-12 gap-y-5">
-              {[
-                {
-                  label: "Mega",
-                  count: tierDistribution.Mega,
-                  color: "bg-purple-500",
-                },
-                {
-                  label: "Macro",
-                  count: tierDistribution.Macro,
-                  color: "bg-blue-500",
-                },
-                {
-                  label: "Micro",
-                  count: tierDistribution.Micro,
-                  color: "bg-cyan-500",
-                },
-                {
-                  label: "Nano",
-                  count: tierDistribution.Nano,
-                  color: "bg-slate-400",
-                },
-              ].map((item) => (
-                <div key={item.label} className="w-full">
-                  <div className="flex justify-between items-end mb-1.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                      {item.label}
+        </div>
+
+        {/* KOLOM KANAN: DUAL TIERING (Habisin Sisa Space ke Kanan) */}
+        <div className="col-span-12 lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-center">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-sm font-bold text-slate-800">
+              Talent Tiering Composition
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+            {/* RENDER IG COLUMN */}
+            <div className="space-y-4">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-pink-500 bg-pink-50 px-2.5 py-1.5 rounded-xl border border-pink-100 w-fit">
+                <Instagram size={14} /> Instagram
+              </span>
+              {["Mega", "Macro", "Micro", "Nano"].map((tier) => (
+                <div key={`ig-${tier}`} className="min-w-0">
+                  <div className="flex justify-between items-end mb-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      {tier}
                     </span>
-                    <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
-                      {item.count}
-                      {""}
-                      <span className="text-[9px] text-slate-400 font-bold">
-                        TALENT
+                    <span className="text-xs font-black text-slate-800">
+                      {(igTiers as any)[tier]}{" "}
+                      <span className="text-[10px] text-slate-300 font-bold">
+                        TALENTS
                       </span>
                     </span>
                   </div>
-                  {/* Progress Bar Container */}
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${item.color} transition-all duration-700 ease-out`}
+                      className="h-full bg-pink-500 transition-all duration-700"
                       style={{
-                        width: `${
-                          totalTalents > 0
-                            ? (item.count / totalTalents) * 100
-                            : 0
-                        }%`,
+                        width: `${((igTiers as any)[tier] / total) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* RENDER TIKTOK COLUMN */}
+            <div className="space-y-4">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 w-fit">
+                <SiTiktok size={14} />
+                TikTok
+              </span>
+              {["Mega", "Macro", "Micro", "Nano"].map((tier) => (
+                <div key={`tt-${tier}`} className="min-w-0">
+                  <div className="flex justify-between items-end mb-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      {tier}
+                    </span>
+                    <span className="text-xs font-black text-slate-800">
+                      {(ttTiers as any)[tier]}{" "}
+                      <span className="text-[10px] text-slate-300 font-bold">
+                        TALENTS
+                      </span>
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-slate-800 transition-all duration-700"
+                      style={{
+                        width: `${((ttTiers as any)[tier] / total) * 100}%`,
                       }}
                     />
                   </div>
@@ -300,281 +362,230 @@ export default function DashboardView({
           </div>
         </div>
       </div>
-
+      {/* ROW 3: SOURCE, GENDER, & RELIGION */}
       <div className="grid grid-cols-12 gap-6">
-        {/* ROW 2 - KIRI: Zodiac Bar Chart (GANTI DARI COST EFFICIENCY) */}
-        <div className="col-span-12 lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-800">
-            Zodiac Distribution
-          </h3>
-          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-6">
-            Total talents per zodiac sign
-          </p>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={zodiacData}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#F1F5F9"
-                />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 9, fill: "#94A3B8" }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: "#94A3B8" }}
-                />
-                <Tooltip
-                  formatter={(
-                    value: number | undefined,
-                    name: string | undefined,
-                  ) => [`${value || 0} Talent`, name]}
-                  cursor={{ fill: "#F8FAFC" }}
-                />
-                <Bar
-                  dataKey="total"
-                  fill="#1B4D66"
-                  radius={[6, 6, 0, 0]}
-                  barSize={35}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* ROW 2 - KANAN: Age Distribution Pie Chart (GANTI DARI DOMICILE) */}
-        <div className="col-span-12 lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-6">
+        {/* 1. SOURCE DISTRIBUTION */}
+        <div className="col-span-12 lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
+          <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-bold text-slate-800">
               Source Distribution
             </h3>
-            <Cake size={16} className="text-slate-300" />
+            <Compass size={16} className="text-slate-300" />
           </div>
 
-          <div className="h-72 relative">
-            {/* AKSESORIS TENGAH (IDENTITAS UMUR) */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-6">
-              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mb-1 border border-slate-100 shadow-sm">
-                <Cake size={20} className="text-slate-400" />
-              </div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                Avg Age
+          <div className="h-64 relative">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
+              <h4 className="text-lg font-black text-slate-800">
+                {sourceData.length}
+              </h4>
+              <p className="text-[8px] font-bold text-slate-400 uppercase">
+                Sources
               </p>
-              <h4 className="text-xl font-black text-slate-800">{avgAge}</h4>
             </div>
-
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={ageData}
-                  innerRadius={65}
-                  outerRadius={85}
-                  paddingAngle={8}
+                  data={sourceData}
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
                   dataKey="value"
                   stroke="none"
                 >
-                  {ageData.map((entry, index) => (
+                  {sourceData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}
-                      className="outline-none"
                     />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(
-                    value: number | undefined,
-                    name: string | undefined,
-                  ) => [`${value || 0} Talent`, name]}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "none",
-                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                  }}
-                />
-                <Legend
-                  layout="horizontal"
-                  verticalAlign="bottom"
-                  align="center"
-                  iconType="circle"
-                  iconSize={8}
-                  wrapperStyle={{
-                    fontSize: "10px",
-                    fontWeight: "bold",
-                    textTransform: "uppercase",
-                    paddingTop: "20px",
-                  }}
+                  formatter={(value: any, name: any) => [
+                    `${value} Talent`,
+                    name,
+                  ]}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
 
-          {/* AKSESORIS BAWAH (FOOTER STATS) */}
-          <div className="mt-4 pt-6 border-t border-slate-50 flex justify-between items-center">
-            <div className="text-center flex-1">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                Youngest
-              </p>
-              <p className="text-sm font-black text-slate-700">
-                {Math.min(...talents.map((t) => parseInt(t.umur) || 99))}
-              </p>
+          <div className="mt-auto pt-4 border-t border-slate-50">
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-3">
+              {sourceData.map((entry, index) => (
+                <div
+                  key={`leg-src-${index}`}
+                  className="flex items-center gap-1.5"
+                >
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <span className="text-[10px] font-bold text-slate-600">
+                    {entry.name}
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="h-8 bg-slate-100"></div>
-            <div className="text-center flex-1">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                Main Group
+            <div className="flex justify-between items-center bg-slate-50 rounded-xl px-3 py-2">
+              <p className="text-[9px] font-bold text-slate-400 uppercase">
+                Top Source
               </p>
-              <p className="text-sm font-black text-blue-600">
-                {ageData.sort((a, b) => b.value - a.value)[0]?.name || "-"}
-              </p>
-            </div>
-            <div className="h-8 bg-slate-100"></div>
-            <div className="text-center flex-1">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                Oldest
-              </p>
-              <p className="text-sm font-black text-slate-700">
-                {Math.max(...talents.map((t) => parseInt(t.umur) || 0))}
+              <p className="text-[10px] font-black text-blue-600">
+                {topSource}
               </p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ROW 3: RATE CARD RANGE & RELIGION */}
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-12 lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-6">
+        {/* 2. GENDER DISTRIBUTION */}
+        <div className="col-span-12 lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
+          <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-bold text-slate-800">
-              Religion Distribution
+              Gender Distribution
             </h3>
-            <div className="p-1.5 bg-slate-50 rounded-lg">
-              <Users size={14} className="text-slate-400" />
-            </div>
+            <Users size={16} className="text-slate-300" />
           </div>
 
-          <div className="h-72 relative">
-            {/* CENTER INFO */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-6">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                Diversity
-              </p>
-              <h4 className="text-xl font-black text-slate-800">
-                {religionData.length}
+          <div className="h-64 relative">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
+              <h4 className="text-lg font-black text-slate-800">
+                {genderData.length}
               </h4>
-              <p className="text-[9px] font-bold text-slate-400 uppercase">
+              <p className="text-[8px] font-bold text-slate-400 uppercase">
                 Groups
               </p>
             </div>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={genderData}
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {genderData.map((entry, index) => (
+                    <Cell
+                      key={`cell-gen-${index}`}
+                      fill={COLORS[(index + 1) % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: any, name: any) => [
+                    `${value} Talent`,
+                    name,
+                  ]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
 
+          <div className="mt-auto pt-4 border-t border-slate-50">
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-3">
+              {genderData.map((entry, index) => (
+                <div
+                  key={`leg-gen-${index}`}
+                  className="flex items-center gap-1.5"
+                >
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{
+                      backgroundColor: COLORS[(index + 1) % COLORS.length],
+                    }}
+                  />
+                  <span className="text-[10px] font-bold text-slate-600">
+                    {entry.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between items-center bg-slate-50 rounded-xl px-3 py-2">
+              <p className="text-[9px] font-bold text-slate-400 uppercase">
+                Dominant
+              </p>
+              <p className="text-[10px] font-black text-pink-600">
+                {genderData.sort((a, b) => b.value - a.value)[0]?.name || "-"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. RELIGION DISTRIBUTION */}
+        <div className="col-span-12 lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-bold text-slate-800">
+              Religion Distribution
+            </h3>
+            <UserCheck size={16} className="text-slate-300" />
+          </div>
+
+          <div className="h-64 relative">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
+              <h4 className="text-lg font-black text-slate-800">
+                {religionData.length}
+              </h4>
+              <p className="text-[8px] font-bold text-slate-400 uppercase">
+                Faiths
+              </p>
+            </div>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={religionData}
-                  innerRadius={65}
-                  outerRadius={85}
-                  paddingAngle={8}
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
                   dataKey="value"
                   stroke="none"
                 >
                   {religionData.map((entry, index) => (
                     <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
+                      key={`cell-rel-${index}`}
+                      fill={COLORS[(index + 2) % COLORS.length]}
                     />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(
-                    value: number | undefined,
-                    name: string | undefined,
-                  ) => [`${value || 0} Talent`, name]}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "none",
-                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                  }}
-                />
-                <Legend
-                  layout="horizontal"
-                  verticalAlign="bottom"
-                  align="center"
-                  iconType="circle"
-                  wrapperStyle={{
-                    fontSize: "10px",
-                    fontWeight: "bold",
-                    paddingTop: "20px",
-                  }}
+                  formatter={(value: any, name: any) => [
+                    `${value} Talent`,
+                    name,
+                  ]}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </div>
-        {/* Rate Card Range - Bar Chart (Kiri - Span 8) */}
-        <div className="col-span-12 lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-800">
-            Rate Card Range Distribution
-          </h3>
-          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-6">
-            Market value segmentation
-          </p>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={rateCardData}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#F1F5F9"
-                />
-                <XAxis
-                  dataKey="range"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11, fill: "#94A3B8" }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: "#94A3B8" }}
-                />
-                <Tooltip
-                  formatter={(
-                    value: number | undefined,
-                    name: string | undefined,
-                  ) => [`${value || 0} Talent`, name]}
-                  cursor={{ fill: "#F8FAFC" }}
-                />
-                <Bar
-                  dataKey="total"
-                  fill="#E956D3"
-                  radius={[6, 6, 0, 0]}
-                  barSize={40}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+
+          <div className="mt-auto pt-4 border-t border-slate-50">
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-3">
+              {religionData.map((entry, index) => (
+                <div
+                  key={`leg-rel-${index}`}
+                  className="flex items-center gap-1.5"
+                >
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{
+                      backgroundColor: COLORS[(index + 2) % COLORS.length],
+                    }}
+                  />
+                  <span className="text-[10px] font-bold text-slate-600">
+                    {entry.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between items-center bg-slate-50 rounded-xl px-3 py-2">
+              <p className="text-[9px] font-bold text-slate-400 uppercase">
+                Major
+              </p>
+              <p className="text-[10px] font-black text-emerald-600">
+                {religionData.sort((a, b) => b.value - a.value)[0]?.name || "-"}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ title, value, icon, color }: any) {
-  return (
-    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group transition-all">
-      <div>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-          {title}
-        </p>
-        <div className="text-2xl font-bold text-slate-800">{value}</div>
-      </div>
-      <div className={`p-3 rounded-2xl ${color} transition-transform`}>
-        {icon}
       </div>
     </div>
   );

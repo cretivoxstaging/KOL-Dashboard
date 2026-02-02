@@ -59,6 +59,7 @@ export default function AddTalentModal({
     if (followers >= 10000) return "Micro";
     return "Nano";
   };
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -80,11 +81,45 @@ export default function AddTalentModal({
     }
   }, [initialData]);
 
-  const handleSubmit = () => {
-    if (!formData.name) return alert("Nama wajib diisi!");
-    onSave(formData);
-  };
+const handleSubmit = async () => {
+  if (!formData.name) return alert("Nama wajib diisi!");
 
+  // Ambil username baru dan username lama (bersihkan dari @ dan spasi)
+  const newUsername = formData.igAccount?.replace("@", "").trim();
+  const oldUsername = initialData?.igAccount?.replace("@", "").trim();
+
+  // CEK: Apakah username-nya berubah? 
+  // Kalau berubah DAN tidak kosong, baru kita nembak API
+  if (newUsername && newUsername !== oldUsername) {
+    setIsSyncing(true);
+    console.log("Username berubah! Nembak API IG untuk:", newUsername);
+
+    try {
+      const syncRes = await fetch(`/API/instagram?username=${newUsername}&id=${initialData?.id}`);
+      const syncData = await syncRes.json();
+
+      if (syncData.success) {
+        const updatedData = {
+          ...formData,
+          igFollowers: syncData.followers,
+          tier_ig: syncData.tier,
+          er: syncData.er,
+        };
+        onSave(updatedData);
+        onClose();
+        return; 
+      }
+    } catch (err) {
+      console.error("Gagal sinkronisasi IG:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  } else {
+    // Kalau username-nya SAMA atau KOSONG, langsung save aja tanpa nembak API
+    console.log("Username tidak berubah, langsung save.");
+    onSave(formData);
+  }
+};
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-[15px] w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
@@ -384,12 +419,12 @@ export default function AddTalentModal({
                 onChange={(v: string) => {
                   const val = v === "" ? "" : parseInt(v);
                   const numForTier = typeof val === "number" ? val : 0;
-                  const newTier = calculateTier(numForTier); 
+                  const newTier = calculateTier(numForTier);
 
                   setFormData({
                     ...formData,
                     tiktokFollowers: val,
-                    tier_tiktok: newTier, 
+                    tier_tiktok: newTier,
                   });
                 }}
               />
@@ -455,7 +490,13 @@ export default function AddTalentModal({
               <Select
                 label="Source"
                 value={formData.source}
-                options={["Artist/Celebrity", "Influencer/KOL", "Talent", "Media", "Clippers",]}
+                options={[
+                  "Artist/Celebrity",
+                  "Influencer/KOL",
+                  "Talent",
+                  "Media",
+                  "Clippers",
+                ]}
                 onChange={(v: string) =>
                   setFormData({ ...formData, source: v })
                 }
@@ -506,9 +547,19 @@ export default function AddTalentModal({
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 py-4 bg-[#1B3A5B] text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            disabled={isSyncing}
+            className="flex-1 py-4 bg-[#1B3A5B] text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {initialData ? "Update Talent" : "Save Talent Data"}
+            {isSyncing ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                Syncing IG...
+              </span>
+            ) : initialData ? (
+              "Update Talent"
+            ) : (
+              "Save Talent Data"
+            )}
           </button>
         </div>
       </div>

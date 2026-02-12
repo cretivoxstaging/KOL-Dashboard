@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "ejs": "^4.0.1",
+    "express": "^5.2.1",
+    "js-cookie": "^3.0.5",
     "lucide-react": "^0.562.0",
     "next": "16.1.1",
     "react": "19.2.3",
@@ -26,5 +29,19 @@
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/cretivox.dev.client/kol-dashboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://gitlab.com/cretivox.dev.client/kol-dashboard/issues"
+  },
+  "homepage": "https://gitlab.com/cretivox.dev.client/kol-dashboard#readme"
 }

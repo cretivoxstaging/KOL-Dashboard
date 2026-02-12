@@ -8,6 +8,8 @@ export default function TaxCalculatorView() {
       <iframe
         src={EXTERNAL_CALCULATOR_URL}
         style={{ width: '100vw', height: '100vh', border: 'none', margin: 0, padding: 0 }}
+                            allow="clipboard-write"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-presentation allow-clipboard-write"
         title="Tax Calculator"
         allowFullScreen
       />

@@ -121,7 +121,7 @@ const handleSubmit = async () => {
   }
 };
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-100 p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-[15px] w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
         {/* HEADER */}
         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
@@ -510,29 +510,6 @@ const handleSubmit = async () => {
                   {formData.tier_ig}
                 </div>
               </div>
-            </div>
-          </section>
-
-          {/* SECTION 4: MOTIVATION */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2 text-[#1B3A5B] mb-2">
-              <Heart size={18} className="text-red-500" />
-              <h4 className="font-bold uppercase text-xs tracking-widest">
-                Talent Motivation
-              </h4>
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                reasons to be a talent
-              </label>
-              <textarea
-                value={formData.alasan}
-                className="w-full border border-slate-200 rounded-2xl px-4 py-3 mt-1 focus:ring-2 focus:ring-blue-500/20 outline-none min-h-[100px] text-sm"
-                placeholder="Ceritakan alasan singkat..."
-                onChange={(e) =>
-                  setFormData({ ...formData, alasan: e.target.value })
-                }
-              />
             </div>
           </section>
         </div>

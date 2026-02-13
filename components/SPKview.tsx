@@ -27,8 +27,14 @@ export default function SPKView() {
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedYear, setSelectedYear] = useState("all");
-
-  const [jangkaMode, setJangkaMode] = useState<"bulan" | "tanggal">("bulan");
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean;
+    item: any | null;
+  }>({
+    open: false,
+    item: null,
+  });
+  const [confirmText, setConfirmText] = useState("");
 
   // Buat helper untuk generate initial SOW 1-10
   const initialSows: { [key: string]: string } = Array.from({
@@ -176,84 +182,120 @@ export default function SPKView() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    console.log("Nembak URL:", `/api/spk/${id}`);
-    if (!confirm("Yakin mau hapus SPK ini Rus?")) return;
-    try {
-      const res = await fetch(`/api/spk/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        alert("Berhasil dihapus!");
-        fetchSPK();
-      }
-    } catch (error) {
-      console.error(error);
-    }
+  // Fungsi buat buka modal
+  const openDeleteModal = (item: any) => {
+    setDeleteModal({ open: true, item: item });
+    setConfirmText(""); // Reset text setiap buka modal baru
   };
 
-  const handleOpenEdit = (item: any) => {
-    setEditingId(item.id);
-    setFormData((prev) => ({
-      ...prev,
-      vendor_name: item.talent,
-      brand_name: item.brand,
-    }));
-    setIsFormOpen(true);
-  };
+  // Fungsi eksekusi hapus (Gantiin isi handleDelete lo yang lama)
+  const executeDelete = async () => {
+    if (confirmText.toLowerCase() !== "delete") return;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
     setIsLoading(true);
-
-    // 1. Format Periode & Tanggal Pembayaran (PENTING!)
-    const startStr = formatTanggalIndo(formData.campaign_start);
-    const endStr = formatTanggalIndo(formData.campaign_end);
-    const campaign_period = `${startStr} - ${endStr}`;
-
-    // Tambahkan ini biar payment_date jadi "12 Februari 2026"
-    const formattedPaymentDate = formatTanggalIndo(formData.payment_date);
-
-    const formattedProjectFee = Number(formData.project_fee).toLocaleString(
-      "id-ID",
-    );
-    const formattedPph23 = Number(formData.pph_23).toLocaleString("id-ID");
-    const formattedGrandTotal = Number(formData.grand_total).toLocaleString(
-      "id-ID",
-    );
-
-    const payload = {
-      ...formData,
-      campaign_period: campaign_period, // Kirim yang sudah diterjemahkan
-      payment_date: formattedPaymentDate, // Kirim yang sudah diterjemahkan
-      project_fee: formattedProjectFee,
-      pph_23: formattedPph23,
-      grand_total: formattedGrandTotal,
-    };
-
-    console.log("Payload yang dikirim:", payload); // Cek console, pasti sudah berubah
-
     try {
-      const url = editingId ? `/api/spk/${editingId}` : "/api/spk";
-      const method = editingId ? "PUT" : "POST";
-
-      const response = await fetch("/api/spk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const res = await fetch(`/api/spk/${deleteModal.item.id}`, {
+        method: "DELETE",
       });
 
-      if (response.ok) {
+      if (res.ok) {
+        // Gak perlu alert lagi biar modern, langsung fetch aja
         fetchSPK();
-        setIsFormOpen(false);
-        setEditingId(null);
+        setDeleteModal({ open: false, item: null });
       } else {
-        alert("Gagal generate SPK.");
+        alert("Gagal menghapus SPK");
       }
     } catch (error) {
-      alert("Koneksi bermasalah.");
+      console.error("Error delete:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
+const handleOpenEdit = (item: any) => {
+  // 1. Simpan ID-nya biar pas disubmit sistem tau ini mode "Update"
+  setEditingId(item.id); 
+
+  // 2. Kosongin Form biar lo bisa ngetik dari nol (Re-Generate)
+  // Tapi nomor SPK-nya lo isi otomatis biar lo gak capek ngetik ulang
+  setFormData({
+    ...initialSows, // Reset SOW
+    first_party_signer: "",
+    first_party_position: "",
+    vendor_name: "",
+    vendor_nik: "",
+    vendor_address: "",
+    vendor_role: "",
+    vendor_company_name: "",
+    brand_name: "",
+    business_type: "",
+    collab_type: "",
+    campaign_start: "",
+    campaign_end: "",
+    campaign_period: "",
+    collab_nature: "Eksklusif",
+    talent_name: item.number, // Tips: Sementara taro nomor SPK lama di sini biar lo tau lagi edit nomor berapa
+    project_fee: "",
+    pph_23: "",
+    grand_total: "",
+    grand_total_words: "",
+    bank_name: "",
+    bank_branch: "",
+    bank_account_number: "",
+    bank_account_name: "",
+    payment_date: "",
+  });
+
+  setIsFormOpen(true); // Buka form-nya
+};
+  
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+  const campaign_period = `${formatTanggalIndo(formData.campaign_start)} - ${formatTanggalIndo(formData.campaign_end)}`;
+  const formattedPaymentDate = formatTanggalIndo(formData.payment_date);
+
+  const payload = {
+    ...formData,
+    number: editingId ? spkList.find(i => i.id === editingId)?.number : formData.brand_name, 
+    talent: formData.talent_name,
+    brand: formData.brand_name,
+    campaign_period: campaign_period,
+    payment_date: formattedPaymentDate,
+    project_fee: Number(formData.project_fee).toLocaleString("id-ID"),
+    pph_23: Number(formData.pph_23).toLocaleString("id-ID"),
+    grand_total: Number(formData.grand_total).toLocaleString("id-ID"),
+  };
+
+  const url = editingId ? `/api/spk/${editingId}` : "/api/spk";
+  const method = editingId ? "PUT" : "POST";
+
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      console.log("Update Success! Meminta tabel refresh...");
+      
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      
+      await fetchSPK();
+      setIsFormOpen(false);
+      setEditingId(null);
+      alert("PDF Berhasil Diperbarui dengan Nomor yang Sama!");
+    } else {
+      alert("Gagal update data.");
+    }
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -636,9 +678,8 @@ export default function SPKView() {
                       Grand Total (Rp)
                     </label>
                     <input
-                      type="text" // WAJIB text biar titiknya nggak bikin error browser
+                      type="text"
                       name="grand_total"
-                      // Tampilin angka dengan format titik, tapi kalau kosong ya string kosong
                       value={
                         formData.grand_total
                           ? Number(formData.grand_total).toLocaleString("id-ID")
@@ -787,7 +828,7 @@ export default function SPKView() {
               placeholder="Search talent or brand..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all shadow-sm"
+              className="w-full pl-11 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all shadow-sm"
             />
           </div>
 
@@ -903,7 +944,7 @@ export default function SPKView() {
 
                       {/* Tombol Delete */}
                       <button
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => openDeleteModal(item)}
                         className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all"
                       >
                         <Trash2 size={16} className="sm:size-6" />
@@ -935,6 +976,63 @@ export default function SPKView() {
             )}
           </tbody>
         </table>
+        {/* MODAL DELETE PREMIUM */}
+        {deleteModal.open && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+              <div className="p-8 space-y-6">
+                <div className="flex items-center gap-3 text-red-600">
+                  <div className="p-3 bg-red-50 rounded-2xl">
+                    <Trash2 size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#1B3A5B]">
+                    Delete SPK
+                  </h3>
+                </div>
+
+                <div className="bg-red-50 border border-red-100 p-4 rounded-2xl">
+                  <p className="text-red-800 text-xs leading-relaxed">
+                    <span className="font-bold">Warning:</span> This action
+                    cannot be undone. Data for <b>{deleteModal.item?.talent}</b>{" "}
+                    on brand <b>{deleteModal.item?.brand}</b> will be
+                    permanently removed.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                <label className="text-sm font-bold text-slate-700">
+                  Type <span className="text-red-600">delete</span> to confirm:
+                </label>
+                  <input
+                    type="text"
+                    placeholder="Type 'delete' here..."
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 outline-none focus:ring-4 focus:ring-red-500/5 focus:border-red-200 transition-all text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <button
+                    onClick={() => setDeleteModal({ open: false, item: null })}
+                    className="py-3.5 rounded-2xl font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={
+                      confirmText.toLowerCase() !== "delete" || isLoading
+                    }
+                    onClick={executeDelete}
+                    className="py-3.5 rounded-2xl font-bold bg-red-500 hover:bg-red-600 text-white disabled:opacity-30 disabled:grayscale transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-red-200"
+                  ><Trash2 size={18} /> 
+                    {isLoading ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

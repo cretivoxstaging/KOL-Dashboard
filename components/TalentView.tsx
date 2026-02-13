@@ -629,7 +629,7 @@ export default function TalentView({
                     : "bg-red-300 cursor-not-allowed"
                 }`}
               >
-                <Trash2 size={18} /> Delete Employee
+                <Trash2 size={18} /> Delete
               </button>
             </div>
           </div>

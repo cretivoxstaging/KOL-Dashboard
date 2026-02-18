@@ -1,32 +1,41 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import {
-  FileText,
   Plus,
   Trash2,
   ChevronLeft,
+  ChevronDown,
   Building2,
   User,
   BadgeDollarSign,
   Download,
-  Calendar,
   ListChecks,
   Banknote,
   Pencil,
 } from "lucide-react";
 
-export default function SPKView() {
+interface SPKViewProps {
+  spkList: any[];
+  fetchSPK: () => void;
+}
+
+export default function SPKView({
+  spkList: propsSpkList,
+  fetchSPK,
+}: SPKViewProps) {
+  const [openActionId, setOpenActionId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const EXTERNAL_CALCULATOR_URL = "https://tax-kol-calculator.vercel.app/";
   const [activeSowCount, setActiveSowCount] = useState(1);
   const [sowIds, setSowIds] = useState([Date.now()]);
   const [isLoading, setIsLoading] = useState(false);
-  const [spkList, setSpkList] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedYear, setSelectedYear] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
     item: any | null;
@@ -49,7 +58,7 @@ export default function SPKView() {
     return acc;
   }, {});
 
-  const filteredAndSortedSPK = spkList
+  const filteredAndSortedSPK = propsSpkList
     .filter((item) => {
       const searchTerm = searchQuery.toLowerCase();
       const matchesSearch =
@@ -57,10 +66,9 @@ export default function SPKView() {
         item.brand?.toLowerCase().includes(searchTerm) ||
         item.number?.toLowerCase().includes(searchTerm);
 
-      // Ambil bagian Bulan dan Tahun dari string "DD/MM/YYYY"
       const dateParts = item.date ? item.date.split("/") : [];
-      const itemMonth = dateParts[1]; // "02"
-      const itemYear = dateParts[2]; // "2026"
+      const itemMonth = dateParts[1];
+      const itemYear = dateParts[2];
 
       const matchesMonth =
         selectedMonth === "all" || itemMonth === selectedMonth;
@@ -69,7 +77,6 @@ export default function SPKView() {
       return matchesSearch && matchesMonth && matchesYear;
     })
     .sort((a, b) => {
-      // Balik format DD/MM/YYYY jadi YYYY-MM-DD biar bisa di-compare
       const parseDate = (dateStr: string) => {
         const [d, m, y] = dateStr.split("/");
         return new Date(`${y}-${m}-${d}`).getTime();
@@ -79,6 +86,16 @@ export default function SPKView() {
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
 
+  const totalPages = Math.ceil(filteredAndSortedSPK.length / rowsPerPage);
+  const indexOfLastItem = currentPage * rowsPerPage;
+  const indexOfFirstItem = indexOfLastItem - rowsPerPage;
+  const currentItems = filteredAndSortedSPK.slice(
+    indexOfFirstItem,
+    indexOfLastItem,
+  );
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedMonth, selectedYear]);
   const formatTanggalIndo = (dateStr: string) => {
     if (!dateStr) return "";
 
@@ -212,90 +229,91 @@ export default function SPKView() {
     }
   };
 
-const handleOpenEdit = (item: any) => {
-  // 1. Simpan ID-nya biar pas disubmit sistem tau ini mode "Update"
-  setEditingId(item.id); 
+  const handleOpenEdit = (item: any) => {
+    // 1. Simpan ID-nya biar pas disubmit sistem tau ini mode "Update"
+    setEditingId(item.id);
 
-  // 2. Kosongin Form biar lo bisa ngetik dari nol (Re-Generate)
-  // Tapi nomor SPK-nya lo isi otomatis biar lo gak capek ngetik ulang
-  setFormData({
-    ...initialSows, // Reset SOW
-    first_party_signer: "",
-    first_party_position: "",
-    vendor_name: "",
-    vendor_nik: "",
-    vendor_address: "",
-    vendor_role: "",
-    vendor_company_name: "",
-    brand_name: "",
-    business_type: "",
-    collab_type: "",
-    campaign_start: "",
-    campaign_end: "",
-    campaign_period: "",
-    collab_nature: "Eksklusif",
-    talent_name: item.number, // Tips: Sementara taro nomor SPK lama di sini biar lo tau lagi edit nomor berapa
-    project_fee: "",
-    pph_23: "",
-    grand_total: "",
-    grand_total_words: "",
-    bank_name: "",
-    bank_branch: "",
-    bank_account_number: "",
-    bank_account_name: "",
-    payment_date: "",
-  });
-
-  setIsFormOpen(true); // Buka form-nya
-};
-  
-
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
-  const campaign_period = `${formatTanggalIndo(formData.campaign_start)} - ${formatTanggalIndo(formData.campaign_end)}`;
-  const formattedPaymentDate = formatTanggalIndo(formData.payment_date);
-
-  const payload = {
-    ...formData,
-    number: editingId ? spkList.find(i => i.id === editingId)?.number : formData.brand_name, 
-    talent: formData.talent_name,
-    brand: formData.brand_name,
-    campaign_period: campaign_period,
-    payment_date: formattedPaymentDate,
-    project_fee: Number(formData.project_fee).toLocaleString("id-ID"),
-    pph_23: Number(formData.pph_23).toLocaleString("id-ID"),
-    grand_total: Number(formData.grand_total).toLocaleString("id-ID"),
-  };
-
-  const url = editingId ? `/api/spk/${editingId}` : "/api/spk";
-  const method = editingId ? "PUT" : "POST";
-
-  try {
-    const response = await fetch(url, {
-      method: method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+    // 2. Kosongin Form biar lo bisa ngetik dari nol (Re-Generate)
+    // Tapi nomor SPK-nya lo isi otomatis biar lo gak capek ngetik ulang
+    setFormData({
+      ...initialSows, // Reset SOW
+      first_party_signer: "",
+      first_party_position: "",
+      vendor_name: "",
+      vendor_nik: "",
+      vendor_address: "",
+      vendor_role: "",
+      vendor_company_name: "",
+      brand_name: "",
+      business_type: "",
+      collab_type: "",
+      campaign_start: "",
+      campaign_end: "",
+      campaign_period: "",
+      collab_nature: "Eksklusif",
+      talent_name: item.number, // Tips: Sementara taro nomor SPK lama di sini biar lo tau lagi edit nomor berapa
+      project_fee: "",
+      pph_23: "",
+      grand_total: "",
+      grand_total_words: "",
+      bank_name: "",
+      bank_branch: "",
+      bank_account_number: "",
+      bank_account_name: "",
+      payment_date: "",
     });
 
-    if (response.ok) {
-      console.log("Update Success! Meminta tabel refresh...");
-      
-      await new Promise(resolve => setTimeout(resolve, 2500));
-      
-      await fetchSPK();
-      setIsFormOpen(false);
-      setEditingId(null);
-      alert("PDF Berhasil Diperbarui dengan Nomor yang Sama!");
-    } else {
-      alert("Gagal update data.");
+    setIsFormOpen(true); // Buka form-nya
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    const campaign_period = `${formatTanggalIndo(formData.campaign_start)} - ${formatTanggalIndo(formData.campaign_end)}`;
+    const formattedPaymentDate = formatTanggalIndo(formData.payment_date);
+
+    const payload = {
+      ...formData,
+      number: editingId
+        ? propsSpkList.find((i) => i.id === editingId)?.number
+        : formData.brand_name,
+      talent: formData.talent_name,
+      brand: formData.brand_name,
+      campaign_period: campaign_period,
+      payment_date: formattedPaymentDate,
+      project_fee: Number(formData.project_fee).toLocaleString("id-ID"),
+      pph_23: Number(formData.pph_23).toLocaleString("id-ID"),
+      grand_total: Number(formData.grand_total).toLocaleString("id-ID"),
+    };
+
+    const url = editingId ? `/api/spk/${editingId}` : "/api/spk";
+    const method = editingId ? "PUT" : "POST";
+
+    try {
+      const response = await fetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        console.log("Update Success! Meminta tabel refresh...");
+
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+
+        await fetchSPK();
+        setIsFormOpen(false);
+        setEditingId(null);
+        alert("PDF Berhasil Diperbarui dengan Nomor yang Sama!");
+      } else {
+        alert("Gagal update data.");
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error(error);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -315,25 +333,6 @@ const handleSubmit = async (e: React.FormEvent) => {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
-  const fetchSPK = async () => {
-    try {
-      const response = await fetch("/api/spk");
-      const result = await response.json();
-
-      // Perhatikan: kita ambil result.data karena array-nya ada di sana
-      if (result && result.data && Array.isArray(result.data)) {
-        setSpkList(result.data);
-      } else {
-        setSpkList([]);
-      }
-    } catch (error) {
-      console.error("Gagal ambil data SPK:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchSPK();
-  }, []);
 
   useEffect(() => {
     // Ambil angka dari grand_total yang lu input manual
@@ -348,7 +347,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   const availableYears = [
     ...new Set(
-      spkList.map((item) => {
+      propsSpkList.map((item) => {
         if (!item.date) return "";
         const parts = item.date.split("/"); // Pecah 12/02/2026
         return parts[2]; // Ambil 2026
@@ -697,7 +696,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">
                     Terbilang
                   </label>
-                  <div className="px-4 py-2.5 rounded-xl border border-slate-100 bg-slate-50 text-sm text-[#1B3A5B] font-medium min-h-[42px] flex items-center capitalize italic">
+                  <div className="px-4 py-2.5 rounded-xl border border-slate-100 bg-slate-50 text-sm text-[#1B3A5B] font-medium min-h-10.5 flex items-center capitalize italic">
                     {formData.grand_total_words || "Nol rupiah"}
                   </div>
                 </div>
@@ -779,14 +778,15 @@ const handleSubmit = async (e: React.FormEvent) => {
           {/* KOLOM KANAN: TAX CALCULATOR */}
           <div className="col-span-1 lg:col-span-5 relative mt-8 lg:mt-0">
             <div className="lg:sticky lg:top-8 space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[700px]">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-screen w-full">
                 <h3 className="font-bold text-slate-700 text-sm mb-4">
                   Tax Calculator
                 </h3>
                 <div className="flex-1 overflow-hidden rounded-2xl relative bg-white">
                   <iframe
                     src={EXTERNAL_CALCULATOR_URL}
-                    className="absolute inset-0 w-full h-full border-none"
+                    className="absolute inset-0 w-full h-full border-none overflow-hidden"
+                    style={{ msOverflowStyle: "none", scrollbarWidth: "none" }}
                     allow="clipboard-write"
                     sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-presentation allow-clipboard-write"
                     title="Tax Calculator"
@@ -803,7 +803,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   return (
     <div className="animate-in fade-in duration-500 space-y-6">
       <h2 className="text-2xl font-bold mb-8 text-[#1B3A5B]">SPK Management</h2>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
         {/* Grup Filter (Search + Month + Sort) */}
         <div className="flex flex-wrap items-center gap-2 flex-1 w-full md:w-auto">
           {/* Search Bar */}
@@ -881,7 +881,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       </div>
 
       {/* TABLE SECTION */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
         <table className="w-full text-left min-w-200">
           <thead className="bg-slate-200 border-b border-slate-100">
             <tr className="text-[10px] sm:text-[11px] font-bold text-slate-800 uppercase tracking-widest">
@@ -919,8 +919,8 @@ const handleSubmit = async (e: React.FormEvent) => {
             </tr>
           </thead>
           <tbody className="text-xs sm:text-sm">
-            {filteredAndSortedSPK.length > 0 ? (
-              filteredAndSortedSPK.map((item) => (
+            {currentItems.length > 0 ? (
+              currentItems.map((item) => (
                 <tr
                   key={item.id}
                   className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
@@ -931,33 +931,76 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <td className="p-2 sm:p-5 font-semibold">{item.talent}</td>
                   <td className="p-2 sm:p-5 text-slate-500">{item.brand}</td>
                   <td className="p-2 sm:p-5 text-slate-500">{item.date}</td>
-                  <td className="p-2 sm:p-5">
-                    <div className="flex justify-center gap-2 flex-wrap">
-                      {/* Tombol Edit */}
+                  <td className="p-5 text-center">
+                    <div className="relative inline-block text-left">
                       <button
-                        onClick={() => handleOpenEdit(item)}
-                        className="p-2 text-amber-500 hover:bg-amber-50 rounded-xl transition-all"
-                        title="Edit SPK"
+                        onClick={() =>
+                          setOpenActionId(
+                            openActionId === item.id ? null : item.id,
+                          )
+                        }
+                        className="flex items-center gap-2 bg-[#1B3A5B] text-white px-4 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm hover:bg-[#254d75]"
                       >
-                        <Pencil size={16} className="sm:size-6" />
+                        Action
+                        <ChevronDown
+                          size={12}
+                          className={`transition-transform ${openActionId === item.id ? "rotate-180" : ""}`}
+                        />
                       </button>
 
-                      {/* Tombol Delete */}
-                      <button
-                        onClick={() => openDeleteModal(item)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                      >
-                        <Trash2 size={16} className="sm:size-6" />
-                      </button>
+                      {openActionId === item.id && (
+                        <>
+                          {/* Backdrop untuk nutup kalau klik di luar */}
+                          <div
+                            className="fixed inset-0 z-10 animate-in fade-in duration-300"
+                            onClick={() => setOpenActionId(null)}
+                          ></div>
 
-                      {/* Tombol Download */}
-                      <a
-                        href={item.url}
-                        download
-                        className="p-2 text-green-500 hover:bg-green-50 rounded-xl transition-all"
-                      >
-                        <Download size={16} className="sm:size-6" />
-                      </a>
+                          {/* Dropdown Menu - Posisinya right-0 biar sejajar ujung tombol */}
+                          <div className="absolute top-full mt-2 right-0 w-44 bg-white border border-slate-100 rounded-2xl shadow-2xl z-20 py-2 origin-top-right transition-all animate-in fade-in zoom-in-95 duration-200">
+                            {/* Menu Edit */}
+                            <button
+                              onClick={() => {
+                                handleOpenEdit(item);
+                                setOpenActionId(null);
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                            >
+                              <Pencil size={14} className="text-amber-500" />
+                              Edit
+                            </button>
+
+                            {/* Menu Download/View PDF */}
+                            <button
+                              onClick={() => {
+                                window.open(item.url, "_blank");
+                                setOpenActionId(null);
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                            >
+                              <Download
+                                size={14}
+                                className="text-emerald-500"
+                              />
+                              Download PDF
+                            </button>
+
+                            <div className="h-px bg-slate-100 my-1 mx-2"></div>
+
+                            {/* Menu Delete */}
+                            <button
+                              onClick={() => {
+                                openDeleteModal(item);
+                                setOpenActionId(null);
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -978,7 +1021,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         </table>
         {/* MODAL DELETE PREMIUM */}
         {deleteModal.open && (
-          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
             <div className="bg-white rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in duration-300">
               <div className="p-8 space-y-6">
                 <div className="flex items-center gap-3 text-red-600">
@@ -1000,9 +1043,10 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </div>
 
                 <div className="space-y-3">
-                <label className="text-sm font-bold text-slate-700">
-                  Type <span className="text-red-600">delete</span> to confirm:
-                </label>
+                  <label className="text-sm font-bold text-slate-700">
+                    Type <span className="text-red-600">delete</span> to
+                    confirm:
+                  </label>
                   <input
                     type="text"
                     placeholder="Type 'delete' here..."
@@ -1025,7 +1069,8 @@ const handleSubmit = async (e: React.FormEvent) => {
                     }
                     onClick={executeDelete}
                     className="py-3.5 rounded-2xl font-bold bg-red-500 hover:bg-red-600 text-white disabled:opacity-30 disabled:grayscale transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-red-200"
-                  ><Trash2 size={18} /> 
+                  >
+                    <Trash2 size={18} />
                     {isLoading ? "Deleting..." : "Delete"}
                   </button>
                 </div>
@@ -1033,6 +1078,86 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
           </div>
         )}
+      </div>
+      <div className="flex flex-col md:flex-row items-center justify-between p-1 border-t border-slate-50 gap-4">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium text-slate-500">
+            Rows per page:
+          </span>
+          <select
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500/10 shadow-sm cursor-pointer"
+          >
+            {[10, 20, 50, 100,].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-slate-400">
+            Showing {filteredAndSortedSPK.length > 0 ? indexOfFirstItem + 1 : 0}{" "}
+            to {Math.min(indexOfLastItem, filteredAndSortedSPK.length)} of{" "}
+            {filteredAndSortedSPK.length}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            Prev
+          </button>
+
+          <div className="flex items-center gap-1 mx-2">
+            {[...Array(totalPages)].map((_, i) => {
+              const pageNum = i + 1;
+              // Logic Sembunyikan page kalo kebanyakan (sama kayak talent)
+              if (
+                totalPages > 5 &&
+                Math.abs(pageNum - currentPage) > 1 &&
+                pageNum !== 1 &&
+                pageNum !== totalPages
+              ) {
+                if (pageNum === 2 || pageNum === totalPages - 1)
+                  return (
+                    <span key={pageNum} className="text-slate-300">
+                      ...
+                    </span>
+                  );
+                return null;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                    currentPage === pageNum
+                      ? "bg-[#1B3A5B] text-white shadow-md shadow-[#1B3A5B]/20"
+                      : "text-slate-500 hover:bg-slate-100"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages || totalPages === 0}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );

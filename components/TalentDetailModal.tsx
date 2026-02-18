@@ -17,8 +17,6 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
   setSelectedDetail,
   formatDate,
   getSourceStyle,
-  onUpdate,
-  setTalentToDelete,
 }) => {
   if (!selectedDetail) return null;
   return (
@@ -261,54 +259,6 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
                 )}
               </div>
             </div>
-          </div>
-          {/* ACTION BUTTONS */}
-          <div className="col-span-1 md:col-span-2 pt-4 flex gap-3">
-            <button
-              onClick={() => {
-                onUpdate(selectedDetail);
-                setSelectedDetail(null);
-              }}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-amber-500 text-white rounded-2xl font-bold hover:bg-amber-600 shadow-lg shadow-amber-200 transition-all active:scale-95"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19.5 2 21l1.5-5L16.5 3.5z" />
-              </svg>
-              Edit Profile
-            </button>
-            <button
-              onClick={() => {
-                setTalentToDelete(selectedDetail);
-                setSelectedDetail(null);
-              }}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 shadow-lg shadow-red-200 transition-all active:scale-95"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 6h18" />
-                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0v14m6-14v14" />
-              </svg>
-              Delete Talent
-            </button>
           </div>
         </div>
       </div>

@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const RAPID_HOST = process.env.RAPIDAPI_HOST?.trim() || "instagram120.p.rapidapi.com";
 
   try {
-    console.log(`[IG Sync] Hunter Mode ON: ${username}`);
+    console.log(`update ig: ${username}`);
 
     // --- STEP 1: AMBIL DATA PROFILE (Followers) ---
     const profileRes = await fetch(`https://${RAPID_HOST}/api/instagram/profile`, {
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       0
     );
 
-    console.log(`[DEBUG] Berhasil dapet angka: ${followers}`);
+    console.log(`followers: ${followers}`);
 
     // --- STEP 2: AMBIL DATA POSTS (Engagement Rate) ---
     const postsRes = await fetch(`https://${RAPID_HOST}/api/instagram/posts`, {
@@ -58,7 +58,6 @@ export async function GET(request: Request) {
       const sample = postItems.slice(0, 10);
       const totalInteraction = sample.reduce((acc: number, item: any) => {
         const node = item.node || item;
-        // Instagram 120 biasanya pake snake_case untuk likes/comments
         const likes = node.like_count || node.edge_liked_by?.count || 0;
         const comments = node.comment_count || node.edge_media_to_comment?.count || 0;
         return acc + likes + comments;

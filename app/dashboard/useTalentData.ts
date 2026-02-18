@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Talent } from "../../types";
 
 export function useTalentData() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "talent" | "tax" | "SPK">("dashboard");
+  const searchParams = useSearchParams();
   const [talents, setTalents] = useState<Talent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,6 +18,34 @@ export function useTalentData() {
   const [selectedAgeRange, setSelectedAgeRange] = useState("All");
   const [selectedSource, setSelectedSource] = useState("All");
   const [sortBy, setSortBy] = useState("update-desc");
+  const [spkList, setSpkList] = useState<any[]>([]);
+
+  const fetchSPK = async () => {
+    try {
+      const response = await fetch("/api/spk");
+      const result = await response.json();
+      if (result?.data) setSpkList(result.data);
+    } catch (error) {
+      console.error("Gagal ambil data SPK:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadTalents();
+    fetchSPK(); // Sikat barengan di awal
+  }, []);
+
+  const getInitialTab = () => {
+    const t = searchParams.get("tab");
+    if (t === "dashboard" || t === "talent" || t === "tax" || t === "SPK") {
+      return t as "dashboard" | "talent" | "tax" | "SPK";
+    }
+    return "dashboard";
+  };
+
+  const [activeTab, setActiveTab] = useState<
+    "dashboard" | "talent" | "tax" | "SPK"
+  >(getInitialTab());
 
   const getTimestamp = (dateString?: string) => {
     if (!dateString || dateString === "null" || dateString === "") return 0;
@@ -41,8 +70,10 @@ export function useTalentData() {
         t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.suku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.igAccount?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchReligion = selectedReligion === "All" || t.agama === selectedReligion;
-      const matchStatus = selectedStatus === "All" || t.status === selectedStatus;
+      const matchReligion =
+        selectedReligion === "All" || t.agama === selectedReligion;
+      const matchStatus =
+        selectedStatus === "All" || t.status === selectedStatus;
       const matchTier = () => {
         if (selectedTier === "All") return true;
         if (selectedTier.startsWith("IG:")) {
@@ -55,7 +86,8 @@ export function useTalentData() {
         }
         return t.tier === selectedTier;
       };
-      const matchSource = selectedSource === "All" || t.source === selectedSource;
+      const matchSource =
+        selectedSource === "All" || t.source === selectedSource;
       const age = parseInt(t.umur) || 0;
       let ageRange = "All";
       if (age >= 10 && age <= 20) ageRange = "10-20";
@@ -63,7 +95,8 @@ export function useTalentData() {
       else if (age >= 31 && age <= 40) ageRange = "31-40";
       else if (age >= 41 && age <= 50) ageRange = "41-50";
       else if (age > 50) ageRange = "51++";
-      const matchAge = selectedAgeRange === "All" || ageRange === selectedAgeRange;
+      const matchAge =
+        selectedAgeRange === "All" || ageRange === selectedAgeRange;
       return (
         matchSearch &&
         matchReligion &&
@@ -217,6 +250,13 @@ export function useTalentData() {
     loadTalents();
   }, []);
 
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t && t !== activeTab) {
+      setActiveTab(t as any);
+    }
+  }, [searchParams]);
+
   const handleSaveTalent = async (formData: any) => {
     try {
       setIsLoading(true);
@@ -243,9 +283,13 @@ export function useTalentData() {
       }
       let shouldSyncTiktok = false;
       if (!talentToEdit) {
-        shouldSyncTiktok = !!(formData.tiktokAccount && formData.tiktokAccount !== "-");
+        shouldSyncTiktok = !!(
+          formData.tiktokAccount && formData.tiktokAccount !== "-"
+        );
       } else if (talentToEdit.tiktokAccount !== formData.tiktokAccount) {
-        shouldSyncTiktok = !!(formData.tiktokAccount && formData.tiktokAccount !== "-");
+        shouldSyncTiktok = !!(
+          formData.tiktokAccount && formData.tiktokAccount !== "-"
+        );
       }
       if (shouldSyncTiktok) {
         try {
@@ -356,5 +400,8 @@ export function useTalentData() {
     handleSaveTalent,
     handleDeleteTalent,
     handleOpenEdit,
+    spkList,
+    setSpkList,
+    fetchSPK,
   };
 }

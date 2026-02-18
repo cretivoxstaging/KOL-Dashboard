@@ -1,7 +1,7 @@
-
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import DashboardView from "../../components/DashboardView";
 import TalentView from "../../components/TalentView";
 import AddTalentModal from "../../components/AddTalentModal";
@@ -10,8 +10,9 @@ import SPKview from "@/components/SPKview";
 import Sidebar from "./Sidebar";
 import { useTalentData } from "./useTalentData";
 
-
 export default function Page() {
+  const router = useRouter();
+
   const {
     activeTab,
     setActiveTab,
@@ -46,18 +47,44 @@ export default function Page() {
     handleSaveTalent,
     handleDeleteTalent,
     handleOpenEdit,
+    spkList,
+    fetchSPK,
   } = useTalentData();
 
   const months = [
-    "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "Mei",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
   ];
   const impressionData = months.map((m, i) => ({
     name: m,
     value:
       talents.length > 0
-        ? talents.reduce((acc, curr) => acc + (curr.monthlyImpressions?.[i] || 0), 0) / talents.length
+        ? talents.reduce(
+            (acc, curr) => acc + (curr.monthlyImpressions?.[i] || 0),
+            0,
+          ) / talents.length
         : 0,
   }));
+
+  useEffect(() => {
+    const mainElement = document.getElementById("main-content");
+    if (mainElement) {
+      mainElement.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }
+  }, [activeTab]);
 
   return (
     <div className="flex h-screen w-screen bg-[#F0F4F8] overflow-x-hidden font-sans text-slate-700 relative">
@@ -66,7 +93,7 @@ export default function Page() {
         onClick={() => setIsSidebarOpen(true)}
         className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg transition-colors lg:hidden"
         aria-label="Open menu"
-        style={{ display: isSidebarOpen ? 'none' : 'block' }}
+        style={{ display: isSidebarOpen ? "none" : "block" }}
       >
         {/* Icon menu moved to Sidebar */}
         <span className="sr-only">Open menu</span>
@@ -81,14 +108,20 @@ export default function Page() {
 
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={(tab: string) => setActiveTab(tab as any)}
+        setActiveTab={(tab: string) => {
+          setActiveTab(tab as any);
+          router.push(`?tab=${tab}`, { scroll: false });
+        }}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
         isSidebarCollapsed={isSidebarCollapsed}
         setIsSidebarCollapsed={setIsSidebarCollapsed}
       />
 
-      <main className={`flex-1 w-full bg-[#F8FAFC] overflow-x-hidden ${activeTab === 'tax' ? 'h-screen overflow-hidden' : 'h-screen overflow-y-auto'}`}>
+      <main
+        id="main-content"
+        className={`flex-1 w-full bg-[#F8FAFC] overflow-x-hidden ${activeTab === "tax" ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
+      >
         {isLoading ? (
           <div className="flex flex-col h-full items-center justify-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1B3A5B]"></div>
@@ -147,7 +180,13 @@ export default function Page() {
               </div>
             ) : null}
             {activeTab === "tax" && <TaxCalculatorView />}
-            <div className="p-3 sm:p-4 md:p-6 lg:p-8">{activeTab === "SPK" && <SPKview />}</div>
+            <div>
+              {activeTab === "SPK" && (
+                <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+                <SPKview spkList={spkList} fetchSPK={fetchSPK} />
+                </div>
+              )}
+            </div>
           </>
         )}
       </main>

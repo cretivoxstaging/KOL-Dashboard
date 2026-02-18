@@ -447,6 +447,10 @@ export default function TalentView({
                   index={index}
                   indexOfFirstItem={indexOfFirstItem}
                   onDetailClick={setSelectedDetail}
+                  onUpdate={(talent) => {
+                    onUpdate(talent);
+                  }}
+                  setTalentToDelete={setTalentToDelete} // Kirim fungsi delete-nya
                 />
               ))
             ) : (
@@ -489,7 +493,7 @@ export default function TalentView({
             }}
             className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500/10 shadow-sm cursor-pointer"
           >
-            {[5, 10, 20, 50, 100, 200].map((size) => (
+            {[10, 20, 50, 100, 200].map((size) => (
               <option key={size} value={size}>
                 {size}
               </option>

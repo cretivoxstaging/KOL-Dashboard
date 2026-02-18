@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
   const RAPID_KEY = process.env.RAPIDAPI_KEY;
 
-  // --- KONFIGURASI PROVIDER (Urutan Baru) ---
+  // --- KONFIGURASI PROVIDER ---
   const providers = [
     {
       name: "ByteDance Services (Urutan 1)",
@@ -105,7 +105,6 @@ export async function GET(request: Request) {
         tiktok_followers: String(followers),
         tier_tiktok: newTier,
         last_update: new Date().toISOString(),
-        source: `Multi-Provider: ${providerName}`
       })
     });
   }

@@ -1,15 +1,54 @@
 "use client";
 
-import React, { useState } from "react";
-import { Mail, Lock, LogIn, AlertCircle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Mail, Lock, LogIn, AlertCircle, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const router = useRouter();
   const [error, setError] = useState<string>("");
+  const [lockoutTime, setLockoutTime] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync lockoutTime with backend on mount (POST, cek blokir)
+  useEffect(() => {
+    const checkLockout = async () => {
+      try {
+        const res = await fetch("/api/Login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        if (res.status === 429) {
+          const data = await res.json();
+          if (typeof data.retryAfter === "number" && data.retryAfter > 0) {
+            setLockoutTime(data.retryAfter);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    checkLockout();
+  }, []);
+
+  useEffect(() => {
+    if (lockoutTime <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutTime((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutTime]);
+
+  // Format detik ke MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,19 +56,30 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await fetch("/API/Login", {
+      // Kirim ke endpoint lokal /api/login
+      const res = await fetch("/api/Login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username: email, password }),
       });
 
       const data = await res.json();
 
-      if (data.success) {
-        localStorage.setItem("isLoggedIn", "true");
+      if (res.status === 429) {
+        // Jika lockout, set waktu dari server (dalam detik)
+        if (typeof data.retryAfter === "number") {
+          setLockoutTime(data.retryAfter);
+        } else {
+          setLockoutTime(15 * 60);
+        }
+        setError("Terlalu banyak percobaan. Coba lagi nanti.");
+        return;
+      }
+
+      if (res.ok) {
         router.push("/dashboard");
       } else {
-        setError(data.message || "Invalid credentials");
+        setError("username or password incorrect");
       }
     } catch (err) {
       setError("Something went wrong. Please try again.");
@@ -41,8 +91,16 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-[#E9EDF0]">
       {/* Kontainer Utama */}
-      <div className="grow flex items-center justify-center p-4">
-        <div className="bg-black p-12 rounded-lg shadow-sm w-full max-w-md border border-gray-200">
+      <div className="grow flex items-center justify-center p-4 relative">
+        {/* Overlay Lockout */}
+        {lockoutTime > 0 && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md rounded-lg">
+            <div className="text-white text-2xl font-bold mb-2">Login Blocked</div>
+            <div className="text-orange-300 text-lg font-mono mb-1">{formatTime(lockoutTime)}</div>
+            <div className="text-white text-sm">Terlalu banyak percobaan. Silakan coba lagi nanti.</div>
+          </div>
+        )}
+        <div className={`bg-black p-12 rounded-lg shadow-sm w-full max-w-md border border-gray-200 transition-all ${lockoutTime > 0 ? "blur-sm pointer-events-none" : ""}`}>
           <h1 className="text-3xl font-semibold text-white text-center mb-10">
             Login
           </h1>
@@ -81,9 +139,17 @@ const LoginPage: React.FC = () => {
               />
             </div>
             {error && (
-              <div className="flex items-center justify-center gap-2 text-red-500 text-sm font-medium animate-in fade-in slide-in-from-top-1">
-                <AlertCircle className="h-4 w-4" />
-                <span>{error}</span>
+              <div className="flex flex-col items-center gap-2 text-red-500 text-sm font-medium p-3 bg-red-500/10 rounded-md border border-red-500/20">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{error}</span>
+                </div>
+                {lockoutTime > 0 && (
+                  <div className="flex items-center gap-1 mt-1 text-orange-400">
+                    <Clock className="h-4 w-4" />
+                    <span>Try again in: {formatTime(lockoutTime)}</span>
+                  </div>
+                )}
               </div>
             )}
 

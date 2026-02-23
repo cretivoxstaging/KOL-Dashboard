@@ -8,7 +8,7 @@ interface FilterSelectProps {
 }
 
 const FilterSelect: React.FC<FilterSelectProps> = ({ value, onChange, options, placeholder }) => (
-  <div className="flex items-center bg-white px-3 py-2 border border-slate-200 rounded-xl shadow-sm hover:border-[#1B3A5B]/30 transition-all">
+  <div className="flex items-center bg-white px-3 py-2 border border-slate-200 rounded-xl shadow-sm hover:border-[#00F0FF]/30 transition-all">
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}

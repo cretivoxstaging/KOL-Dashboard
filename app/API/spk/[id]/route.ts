@@ -5,13 +5,14 @@ const AUTH_TOKEN = process.env.SPK_TOKEN;
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
-    const { id } = await params;
+    const { id } = await params; 
     const body = await req.json();
 
-    console.log(`--- PROSES UPDATE ID: ${id} ---`);
-    console.log("Data Baru:", body.talent_name, "| Brand:", body.brand_name);
+    const spkNumber = decodeURIComponent(id);
 
-    const res = await fetch(`${API_URL}/${id}`, {
+    console.log(`--- PROSES UPDATE SPK NUMBER: ${spkNumber} ---`);
+
+    const res = await fetch(`${API_URL}/number?spk_number=${spkNumber}`, {
       method: "PUT",
       headers: { 
         Authorization: `Bearer ${AUTH_TOKEN}`, 
@@ -21,8 +22,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     });
     
     const data = await res.json();
-    console.log("Hasil dari Database Pusat:", data);
-    
     return NextResponse.json(data);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -73,8 +73,6 @@ export default function TalentView({
   setSelectedSource,
   onRefresh,
   isLoading,
-  isSidebarOpen,
-  isSidebarCollapsed,
 }: TalentViewProps) {
   const [selectedDetail, setSelectedDetail] = useState<Talent | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -407,7 +405,7 @@ export default function TalentView({
       </div>
 
       {/* TABLE SECTION */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
         <table className="w-full text-left">
           <thead>
             <tr className="bg-slate-200 text-slate-800 text-[12px] uppercase tracking-widest font-bold">

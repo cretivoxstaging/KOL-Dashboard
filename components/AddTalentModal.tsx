@@ -525,7 +525,7 @@ const handleSubmit = async () => {
           <button
             onClick={handleSubmit}
             disabled={isSyncing}
-            className="flex-1 py-4 bg-[#1B3A5B] text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-4 bg-[#007AFF] text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSyncing ? (
               <span className="flex items-center justify-center gap-2">

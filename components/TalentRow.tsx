@@ -105,7 +105,7 @@ const TalentRow: React.FC<TalentRowProps> = ({
       </td>
       <td className="p-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#1B3A5B] flex items-center justify-center font-bold text-white text-xs border border-slate-200">
+          <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center font-bold text-white text-xs border border-slate-200">
             {t.name[0]}
           </div>
           <div>
@@ -156,7 +156,7 @@ const TalentRow: React.FC<TalentRowProps> = ({
         <div className="relative inline-block text-left">
           <button
             onClick={() => setOpenDropdown(!openDropdown)}
-            className="flex items-center gap-2 bg-[#1B3A5B] text-white px-4 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm hover:bg-[#254d75]"
+            className="flex items-center gap-2 bg-[#007AFF] text-white px-4 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm hover:bg-[#254d75]"
           >
             Action{" "}
             <ChevronDown

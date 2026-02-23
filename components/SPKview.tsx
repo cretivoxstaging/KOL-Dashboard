@@ -13,6 +13,7 @@ import {
   Banknote,
   Pencil,
 } from "lucide-react";
+import { GiStrong } from "react-icons/gi";
 
 interface SPKViewProps {
   spkList: any[];
@@ -62,28 +63,15 @@ export default function SPKView({
     .filter((item) => {
       const searchTerm = searchQuery.toLowerCase();
       const matchesSearch =
-        item.talent?.toLowerCase().includes(searchTerm) ||
-        item.brand?.toLowerCase().includes(searchTerm) ||
-        item.number?.toLowerCase().includes(searchTerm);
+        (item.talent_name || item.talent)?.toLowerCase().includes(searchTerm) ||
+        (item.brand_name || item.brand)?.toLowerCase().includes(searchTerm) ||
+        (item.spk_number || item.number)?.toLowerCase().includes(searchTerm);
 
-      const dateParts = item.date ? item.date.split("/") : [];
-      const itemMonth = dateParts[1];
-      const itemYear = dateParts[2];
-
-      const matchesMonth =
-        selectedMonth === "all" || itemMonth === selectedMonth;
-      const matchesYear = selectedYear === "all" || itemYear === selectedYear;
-
-      return matchesSearch && matchesMonth && matchesYear;
+      return matchesSearch;
     })
     .sort((a, b) => {
-      const parseDate = (dateStr: string) => {
-        const [d, m, y] = dateStr.split("/");
-        return new Date(`${y}-${m}-${d}`).getTime();
-      };
-      const dateA = parseDate(a.date);
-      const dateB = parseDate(b.date);
-      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+      // Sort logic tetep aman kalo lo tetep dapet field 'date' atau 'id'
+      return sortOrder === "desc" ? b.id - a.id : a.id - b.id;
     });
 
   const totalPages = Math.ceil(filteredAndSortedSPK.length / rowsPerPage);
@@ -229,64 +217,173 @@ export default function SPKView({
     }
   };
 
-  const handleOpenEdit = (item: any) => {
-    // 1. Simpan ID-nya biar pas disubmit sistem tau ini mode "Update"
-    setEditingId(item.id);
+const handleOpenEdit = (item: any) => {
+  setEditingId(item.spk_number || item.number);
 
-    // 2. Kosongin Form biar lo bisa ngetik dari nol (Re-Generate)
-    // Tapi nomor SPK-nya lo isi otomatis biar lo gak capek ngetik ulang
-    setFormData({
-      ...initialSows, // Reset SOW
-      first_party_signer: "",
-      first_party_position: "",
-      vendor_name: "",
-      vendor_nik: "",
-      vendor_address: "",
-      vendor_role: "",
-      vendor_company_name: "",
-      brand_name: "",
-      business_type: "",
-      collab_type: "",
-      campaign_start: "",
-      campaign_end: "",
-      campaign_period: "",
-      collab_nature: "Eksklusif",
-      talent_name: item.number, // Tips: Sementara taro nomor SPK lama di sini biar lo tau lagi edit nomor berapa
-      project_fee: "",
-      pph_23: "",
-      grand_total: "",
-      grand_total_words: "",
-      bank_name: "",
-      bank_branch: "",
-      bank_account_number: "",
-      bank_account_name: "",
-      payment_date: "",
-    });
+  // 1. HELPER: Konversi teks "Februari 2026" jadi "2026-02"
+  const formatToMonthInput = (dateStr: string) => {
+    if (!dateStr) return "";
+    const ds = dateStr.trim();
+    
+    // Jika formatnya sudah ISO (2026-02)
+    if (ds.includes("-") && ds.split("-")[0].length === 4) return ds.substring(0, 7);
 
-    setIsFormOpen(true); // Buka form-nya
+    const bulanIndo = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+    
+    const parts = ds.split(" ");
+    if (parts.length === 2) {
+      const indexBulan = bulanIndo.indexOf(parts[0]) + 1;
+      const tahun = parts[1];
+      if (indexBulan > 0) return `${tahun}-${indexBulan.toString().padStart(2, "0")}`;
+    }
+    return "";
   };
+
+  // 2. PEMBELAH: Pecah satu field campaign_period jadi dua (Start & End)
+  const period = item.campaign_period || "";
+  let rawStart = "";
+  let rawEnd = "";
+
+  if (period.includes(" – ")) { // Cek strip panjang
+    const splitPeriod = period.split(" – ");
+    rawStart = splitPeriod[0];
+    rawEnd = splitPeriod[1];
+  } else if (period.includes(" - ")) { // Cek strip pendek
+    const splitPeriod = period.split(" - ");
+    rawStart = splitPeriod[0];
+    rawEnd = splitPeriod[1];
+  } else {
+    rawStart = period;
+    rawEnd = period;
+  }
+
+  // 3. MAPPING SOW DENGAN FIX TYPESCRIPT (Pake 'as any' di ujung)
+  const sowData: { [key: string]: string } = Array.from({ length: 10 }).reduce((acc: { [key: string]: string }, _, i) => {
+    const n = i + 1;
+    acc[`sow${n}`] = item[`sow${n}`] || "";
+    acc[`jumlah${n}`] = item[`jumlah${n}`] || "";
+    acc[`keterangan${n}_1`] = item[`keterangan${n}_1`] || "";
+    acc[`keterangan${n}_2`] = item[`keterangan${n}_2`] || "";
+    acc[`keterangan${n}_3`] = item[`keterangan${n}_3`] || "";
+    return acc;
+  }, {});
+
+  const natureRaw = item.collab_nature || "";
+  const natureStatus = natureRaw.toUpperCase().includes("NON-EKSLUSIF") ? "Non-Eksklusif" : "Eksklusif";
+
+  // 4. SET FORM DATA (Pake 'as any' di ujung objek)
+  setFormData({
+    ...initialSows,
+    ...sowData, 
+    first_party_signer: item.first_party_signer || "",
+    first_party_position: item.first_party_position || "",
+    vendor_name: item.vendor_name || "",
+    vendor_nik: item.vendor_nik || "",
+    vendor_address: item.vendor_address || "",
+    vendor_role: item.vendor_role || "",
+    vendor_company_name: item.vendor_company_name || "",
+    brand_name: item.brand_name || "",
+    business_type: item.business_type || "",
+    collab_type: item.collab_type || "",
+    
+    // INPUT BULAN SEKARANG OTOMATIS TERISI
+    campaign_start: formatToMonthInput(rawStart),
+    campaign_end: formatToMonthInput(rawEnd),
+    
+    collab_nature: natureStatus,
+    talent_name: item.talent_name || "",
+    project_fee: (item.project_fee || "").toString().replace(/\D/g, ""),
+    pph_23: (item.pph_23 || "").toString().replace(/\D/g, ""),
+    grand_total: (item.grand_total || "").toString().replace(/\D/g, ""),
+    grand_total_words: item.grand_total_words || "",
+    bank_name: item.bank_name || "",
+    bank_branch: item.bank_branch || "",
+    bank_account_number: item.bank_account_number || "",
+    bank_account_name: item.bank_account_name || "",
+    payment_date: item.payment_date_raw || "", 
+  } as any);
+
+  // Set jumlah SOW yang terbuka di UI
+  let lastActiveIndex = 1;
+  for (let i = 1; i <= 10; i++) {
+    if (item[`sow${i}`] && item[`sow${i}`] !== "") lastActiveIndex = i;
+  }
+  setActiveSowCount(lastActiveIndex);
+  setSowIds(Array.from({ length: lastActiveIndex }, (_, i) => Date.now() + i));
+  
+  setIsFormOpen(true);
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const campaign_period = `${formatTanggalIndo(formData.campaign_start)} - ${formatTanggalIndo(formData.campaign_end)}`;
-    const formattedPaymentDate = formatTanggalIndo(formData.payment_date);
 
-    const payload = {
+    // 1. Logic Rentang Kampanye (1x tulis kalau bulan sama)
+    const startFormat = formatTanggalIndo(formData.campaign_start);
+    const endFormat = formatTanggalIndo(formData.campaign_end);
+    const campaign_period =
+      startFormat === endFormat ? startFormat : `${startFormat} - ${endFormat}`;
+
+    // 2. Logic Teks Sifat Kerjasama (Pake tag <b> untuk Bold di PDF)
+    const eksklusifText =
+      "<b>Eksklusif.</b> Selama Jangka Waktu Kampanye Pemasaran, <b>Talent dilarang</b> untuk bekerja sama, mempromosikan, mengeluarkan komentar positif dan/atau terlihat di muka publik menggunakan <b>produk pesaing Merek</b> pada jenis perusahaan yang sama. Dan/atau mengeluarkan komentar positif terhadap barang alternatif atau pengganti dari Merek.";
+
+    const nonEksklusifText =
+      "<b>Non-Eksklusif.</b> Selama Jangka Waktu Kampanye Pemasaran, <b>Talent berhak</b> untuk bekerja sama dengan pihak ketiga manapun. Perjanjian ini tidak membatasi kebebasan Talent untuk mengulas, memberikan penilaian, dan/atau menyatakan pendapatnya atas produk apa pun.";
+
+    // 3. Susun Payload Dasar
+    const payload: any = {
       ...formData,
-      number: editingId
-        ? propsSpkList.find((i) => i.id === editingId)?.number
-        : formData.brand_name,
-      talent: formData.talent_name,
-      brand: formData.brand_name,
-      campaign_period: campaign_period,
-      payment_date: formattedPaymentDate,
+      campaign_period,
+      // Pilih teks panjang berdasarkan pilihan dropdown
+      collab_nature:
+        formData.collab_nature === "Eksklusif"
+          ? eksklusifText
+          : nonEksklusifText,
+      payment_date: formatTanggalIndo(formData.payment_date),
+      // Format angka ke ribuan (pake titik) sesuai contoh API lo
       project_fee: Number(formData.project_fee).toLocaleString("id-ID"),
       pph_23: Number(formData.pph_23).toLocaleString("id-ID"),
       grand_total: Number(formData.grand_total).toLocaleString("id-ID"),
+      // Tanggal pembuatan SPK (Hari ini)
+      created_at: new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      payment_terms: "14 hari",
     };
 
-    const url = editingId ? `/api/spk/${editingId}` : "/api/spk";
+    // 4. Logic OTOMATIS NULL untuk SOW 1-10 yang tidak diisi
+    for (let i = 1; i <= 10; i++) {
+      if (i > activeSowCount) {
+        payload[`sow${i}`] = null;
+        payload[`jumlah${i}`] = null;
+        payload[`keterangan${i}_1`] = null;
+        payload[`keterangan${i}_2`] = null;
+        payload[`keterangan${i}_3`] = null;
+      } else {
+        // Jika diisi tapi kosong, tetap kirim null biar database bersih
+        payload[`sow${i}`] =
+          formData[`sow${i}` as keyof typeof formData] || null;
+        payload[`jumlah${i}`] =
+          formData[`jumlah${i}` as keyof typeof formData] || null;
+        payload[`keterangan${i}_1`] =
+          formData[`keterangan${i}_1` as keyof typeof formData] || null;
+        payload[`keterangan${i}_2`] =
+          formData[`keterangan${i}_2` as keyof typeof formData] || null;
+        payload[`keterangan${i}_3`] =
+          formData[`keterangan${i}_3` as keyof typeof formData] || null;
+      }
+    }
+
+    // 5. Tentukan URL & Method (POST untuk baru, PUT untuk edit)
+    // Gunakan encodeURIComponent karena nomor SPK mengandung karakter '/'
+    const targetId = editingId ? encodeURIComponent(String(editingId)) : "";
+    const url = editingId ? `/api/spk/${targetId}` : "/api/spk";
     const method = editingId ? "PUT" : "POST";
 
     try {
@@ -297,19 +394,15 @@ export default function SPKView({
       });
 
       if (response.ok) {
-        console.log("Update Success! Meminta tabel refresh...");
-
-        await new Promise((resolve) => setTimeout(resolve, 2500));
-
-        await fetchSPK();
-        setIsFormOpen(false);
-        setEditingId(null);
-        alert("PDF Berhasil Diperbarui dengan Nomor yang Sama!");
+        await fetchSPK(); // Refresh data tabel
+        setIsFormOpen(false); // Tutup form
+        setEditingId(null); // Reset mode edit
       } else {
-        alert("Gagal update data.");
+        const errorData = await response.json();
       }
     } catch (error) {
-      console.error(error);
+      console.error("Submit Error:", error);
+      alert("Koneksi ke server terputus.");
     } finally {
       setIsLoading(false);
     }
@@ -412,7 +505,7 @@ export default function SPKView({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <InputGroup
-                    label="Nama Talent"
+                    label="Nama Penandatangan"
                     name="vendor_name"
                     value={formData.vendor_name}
                     onChange={handleChange}
@@ -471,7 +564,7 @@ export default function SPKView({
                     placeholder="Nama Brand"
                   />
                   <InputGroup
-                    label="Jenis Bisnis"
+                    label="Jenis Perusahaan"
                     name="business_type"
                     value={formData.business_type}
                     onChange={handleChange}
@@ -742,7 +835,7 @@ export default function SPKView({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-4 bg-[#1B3A5B] text-white rounded-2xl font-bold shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#007AFF] text-white rounded-2xl font-bold shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -881,7 +974,7 @@ export default function SPKView({
       </div>
 
       {/* TABLE SECTION */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
         <table className="w-full text-left min-w-200">
           <thead className="bg-slate-200 border-b border-slate-100">
             <tr className="text-[10px] sm:text-[11px] font-bold text-slate-800 uppercase tracking-widest">
@@ -918,102 +1011,113 @@ export default function SPKView({
               <th className="p-2 sm:p-5 text-center">Action</th>
             </tr>
           </thead>
+          {/* GANTI BAGIAN TBODY LO DENGAN INI RUS */}
           <tbody className="text-xs sm:text-sm">
             {currentItems.length > 0 ? (
-              currentItems.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-                >
-                  <td className="p-2 sm:p-5 font-bold text-[#1B3A5B]">
-                    {item.number}
-                  </td>
-                  <td className="p-2 sm:p-5 font-semibold">{item.talent}</td>
-                  <td className="p-2 sm:p-5 text-slate-500">{item.brand}</td>
-                  <td className="p-2 sm:p-5 text-slate-500">{item.date}</td>
-                  <td className="p-5 text-center">
-                    <div className="relative inline-block text-left">
-                      <button
-                        onClick={() =>
-                          setOpenActionId(
-                            openActionId === item.id ? null : item.id,
-                          )
-                        }
-                        className="flex items-center gap-2 bg-[#1B3A5B] text-white px-4 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm hover:bg-[#254d75]"
-                      >
-                        Action
-                        <ChevronDown
-                          size={12}
-                          className={`transition-transform ${openActionId === item.id ? "rotate-180" : ""}`}
-                        />
-                      </button>
+              currentItems.map((item, index) => {
+                // Cek apakah ini 2 baris terakhir di halaman yang sedang tampil
+                const isLastRow = index >= currentItems.length - 2;
 
-                      {openActionId === item.id && (
-                        <>
-                          {/* Backdrop untuk nutup kalau klik di luar */}
-                          <div
-                            className="fixed inset-0 z-10 animate-in fade-in duration-300"
-                            onClick={() => setOpenActionId(null)}
-                          ></div>
+                return (
+                  <tr
+                    key={item.id}
+                    className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                  >
+                    <td className="p-2 sm:p-5 font-bold text-[#1B3A5B]">
+                      {item.spk_number || item.number}
+                    </td>
+                    <td className="p-2 sm:p-5 font-semibold">
+                      {item.talent_name || item.talent}
+                    </td>
+                    <td className="p-2 sm:p-5 text-slate-500">
+                      {item.brand_name || item.brand}
+                    </td>
+                    <td className="p-2 sm:p-5 text-slate-500">
+                      {item.created_at || item.date}
+                    </td>
 
-                          {/* Dropdown Menu - Posisinya right-0 biar sejajar ujung tombol */}
-                          <div className="absolute top-full mt-2 right-0 w-44 bg-white border border-slate-100 rounded-2xl shadow-2xl z-20 py-2 origin-top-right transition-all animate-in fade-in zoom-in-95 duration-200">
-                            {/* Menu Edit */}
-                            <button
-                              onClick={() => {
-                                handleOpenEdit(item);
-                                setOpenActionId(null);
-                              }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                    <td className="p-5 text-center">
+                      <div className="relative inline-block text-left">
+                        <button
+                          onClick={() =>
+                            setOpenActionId(
+                              openActionId === item.id ? null : item.id,
+                            )
+                          }
+                          className="flex items-center gap-2 bg-[#007AFF] text-white px-4 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm hover:bg-[#254d75]"
+                        >
+                          Action
+                          <ChevronDown
+                            size={12}
+                            className={`transition-transform ${openActionId === item.id ? "rotate-180" : ""}`}
+                          />
+                        </button>
+
+                        {openActionId === item.id && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={() => setOpenActionId(null)}
+                            ></div>
+
+                            <div
+                              className={`absolute right-0 w-44 bg-white border border-slate-100 rounded-2xl shadow-2xl z-20 py-2 transition-all animate-in fade-in zoom-in-95 duration-200 ${
+                                isLastRow
+                                  ? "bottom-full mb-2 origin-bottom-right"
+                                  : "top-full mt-2 origin-top-right"
+                              }`}
                             >
-                              <Pencil size={14} className="text-amber-500" />
-                              Edit
-                            </button>
+                              <button
+                                onClick={() => {
+                                  handleOpenEdit(item);
+                                  setOpenActionId(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                              >
+                                <Pencil size={14} className="text-amber-500" />{" "}
+                                Edit
+                              </button>
 
-                            {/* Menu Download/View PDF */}
-                            <button
-                              onClick={() => {
-                                window.open(item.url, "_blank");
-                                setOpenActionId(null);
-                              }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-                            >
-                              <Download
-                                size={14}
-                                className="text-emerald-500"
-                              />
-                              Download PDF
-                            </button>
+                              <button
+                                onClick={() => {
+                                  window.open(item.url, "_blank");
+                                  setOpenActionId(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                              >
+                                <Download
+                                  size={14}
+                                  className="text-emerald-500"
+                                />{" "}
+                                Download PDF
+                              </button>
 
-                            <div className="h-px bg-slate-100 my-1 mx-2"></div>
+                              <div className="h-px bg-slate-100 my-1 mx-2"></div>
 
-                            {/* Menu Delete */}
-                            <button
-                              onClick={() => {
-                                openDeleteModal(item);
-                                setOpenActionId(null);
-                              }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 size={14} />
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
+                              <button
+                                onClick={() => {
+                                  openDeleteModal(item);
+                                  setOpenActionId(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td
                   colSpan={5}
                   className="p-10 text-center text-slate-400 italic"
                 >
-                  {searchQuery
-                    ? `Data "${searchQuery}" tidak ditemukan...`
-                    : "Belum ada data SPK."}
+                  Data tidak ditemukan.
                 </td>
               </tr>
             )}
@@ -1092,7 +1196,7 @@ export default function SPKView({
             }}
             className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500/10 shadow-sm cursor-pointer"
           >
-            {[10, 20, 50, 100,].map((size) => (
+            {[10, 20, 50, 100].map((size) => (
               <option key={size} value={size}>
                 {size}
               </option>
@@ -1138,7 +1242,7 @@ export default function SPKView({
                   onClick={() => setCurrentPage(pageNum)}
                   className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
                     currentPage === pageNum
-                      ? "bg-[#1B3A5B] text-white shadow-md shadow-[#1B3A5B]/20"
+                      ? "bg-[#1B3A5B] text-white shadow-md shadow-[#007AFF]/20"
                       : "text-slate-500 hover:bg-slate-100"
                   }`}
                 >

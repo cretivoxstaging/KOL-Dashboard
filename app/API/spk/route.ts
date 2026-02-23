@@ -6,7 +6,7 @@ const AUTH_TOKEN = process.env.SPK_TOKEN;
 // LOGIKA GET (Ambil Data untuk Tabel)
 export async function GET() {
   try {
-    const res = await fetch(`${API_URL}`, {
+    const res = await fetch(`${API_URL}/number`, {
       headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
       cache: "no-store",
     });

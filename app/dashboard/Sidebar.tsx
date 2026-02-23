@@ -1,6 +1,13 @@
 "use client";
 import React from "react";
-import { LayoutDashboard, Users, Calculator, LogOut, Menu, FileText } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Calculator,
+  LogOut,
+  Menu,
+  FileText,
+} from "lucide-react";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 
@@ -17,16 +24,25 @@ function SidebarItem({ icon, label, active, collapsed, onClick }: any) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${active ? "bg-[#1B3A5B] text-white shadow-lg" : "text-slate-400 hover:bg-slate-50"} ${collapsed ? "justify-center" : ""}`}
+      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${active ? "bg-[#007AFF] text-white shadow-lg" : "text-slate-400 hover:bg-slate-50"} ${collapsed ? "justify-center" : ""}`}
       title={collapsed ? label : ""}
     >
       <div className="shrink-0">{icon}</div>
-      {!collapsed && <span className="text-sm font-medium whitespace-nowrap">{label}</span>}
+      {!collapsed && (
+        <span className="text-sm font-medium whitespace-nowrap">{label}</span>
+      )}
     </button>
   );
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  activeTab,
+  setActiveTab,
+  isSidebarOpen,
+  setIsSidebarOpen,
+  isSidebarCollapsed,
+  setIsSidebarCollapsed,
+}) => {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -43,8 +59,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isSidebarOpe
     <aside
       className={`fixed lg:static inset-y-0 left-0 z-50 bg-white border-r border-gray-200 shadow-xl flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${isSidebarCollapsed ? "w-20" : "w-64"}`}
     >
-      <div className={`flex items-center mb-10 text-[#1B3A5B] p-6 ${isSidebarCollapsed ? "justify-center" : "justify-between"}`}>
-        {!isSidebarCollapsed && <h1 className="text-xl font-bold tracking-tight uppercase">KOL</h1>}
+      <div
+        className={`flex items-center mb-10 text-[#1B3A5B] p-6 ${isSidebarCollapsed ? "justify-center" : "justify-between"}`}
+      >
+        {!isSidebarCollapsed && (
+          <h1 className="text-xl font-bold tracking-tight uppercase">
+            KOL <span className="italic normal-case font-bold">CRETIVOX</span>
+          </h1>
+        )}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           className="p-2 hover:bg-slate-100 rounded-lg transition-colors hidden lg:block"
@@ -92,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isSidebarOpe
       <div className="p-4 mt-auto">
         <button
           onClick={handleLogout}
-          className={`flex items-center gap-3 bg-[#1B3A5B] text-white shadow-lg hover:bg-red-500 transition-all rounded-[9px] h-12 font-bold text-sm ${isSidebarCollapsed ? "justify-center w-12" : "w-full px-4"}`}
+          className={`flex items-center gap-3 bg-[#007AFF] text-white shadow-lg hover:bg-[#1B3A5B] transition-all rounded-[9px] h-12 font-bold text-sm ${isSidebarCollapsed ? "justify-center w-12" : "w-full px-4"}`}
         >
           <LogOut size={18} />
           {!isSidebarCollapsed && <span>Log Out</span>}

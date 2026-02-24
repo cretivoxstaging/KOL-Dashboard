@@ -24,7 +24,7 @@ function SidebarItem({ icon, label, active, collapsed, onClick }: any) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${active ? "bg-[#007AFF] text-white shadow-lg" : "text-slate-400 hover:bg-slate-50"} ${collapsed ? "justify-center" : ""}`}
+      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${active ? "bg-[#007AFF] hover:bg-[#007AFF]/80 text-white shadow-lg" : "text-slate-400 hover:bg-slate-200"} ${collapsed ? "justify-center" : ""}`}
       title={collapsed ? label : ""}
     >
       <div className="shrink-0">{icon}</div>
@@ -64,7 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         {!isSidebarCollapsed && (
           <h1 className="text-xl font-bold tracking-tight uppercase">
-            KOL <span className="italic normal-case font-bold">CRETIVOX</span>
+            KOL <span className="italic normal-case font-black">CRETIVOX</span>
           </h1>
         )}
         <button
@@ -114,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-4 mt-auto">
         <button
           onClick={handleLogout}
-          className={`flex items-center gap-3 bg-[#007AFF] text-white shadow-lg hover:bg-[#1B3A5B] transition-all rounded-[9px] h-12 font-bold text-sm ${isSidebarCollapsed ? "justify-center w-12" : "w-full px-4"}`}
+          className={`flex items-center gap-3 bg-[#007AFF] text-white shadow-lg hover:bg-[#007AFF]/80 transition-all rounded-[9px] h-12 font-bold text-sm ${isSidebarCollapsed ? "justify-center w-12" : "w-full px-4"}`}
         >
           <LogOut size={18} />
           {!isSidebarCollapsed && <span>Log Out</span>}

@@ -156,7 +156,7 @@ const TalentRow: React.FC<TalentRowProps> = ({
         <div className="relative inline-block text-left">
           <button
             onClick={() => setOpenDropdown(!openDropdown)}
-            className="flex items-center gap-2 bg-[#007AFF] text-white px-4 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm hover:bg-[#254d75]"
+            className="flex items-center gap-2 bg-[#007AFF] text-white px-4 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm hover:bg-[#007AFF]/80"
           >
             Action{" "}
             <ChevronDown

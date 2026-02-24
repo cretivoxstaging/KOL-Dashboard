@@ -22,14 +22,10 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
   return (
     <div
       className={
-        "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center p-4 animate-in fade-in duration-300"
+        "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
       }
     >
-      <div
-        className={
-          "bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide xl:ml-100 2xl:ml-120"
-        }
-      >
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide">
         {/* Header modal */}
         <div className="flex justify-between items-start mb-8">
           <div className="flex gap-4">

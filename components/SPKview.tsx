@@ -37,6 +37,8 @@ export default function SPKView({
   const [selectedYear, setSelectedYear] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [activeTalentCount, setActiveTalentCount] = useState(1);
+  const [activeCompetitorCount, setActiveCompetitorCount] = useState(1);
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
     item: any | null;
@@ -116,31 +118,47 @@ export default function SPKView({
   };
 
   const [formData, setFormData] = useState({
-    // Bagian I: Identitas Perusahaan [cite: 8]
+    // I: Identitas Perusahaan
     first_party_signer: "",
     first_party_position: "",
 
-    // Bagian II: Identitas Vendor [cite: 9]
+    // II: Identitas Vendor
     vendor_name: "",
     vendor_nik: "",
     vendor_address: "",
     vendor_role: "",
     vendor_company_name: "",
 
-    // Bagian III: Ketentuan Komersial
+    // III: Ketentuan Komersial
     brand_name: "",
     business_type: "",
     collab_type: "",
-    campaign_start: "", // Input bulan mulai
-    campaign_end: "", // Input bulan selesai
-    campaign_period: "", // Gabungan untuk PDF <%= campaign_period %>
+    campaign_start: "",
+    campaign_end: "",
+    campaign_period: "",
     collab_nature: "Eksklusif",
 
-    // Bagian IV: Scope of Work
-    talent_name: "",
-    ...initialSows, // Spread hasil helper yang sudah jelas tipenya
+    // IV: Scope of Work (Talent 1-5 & SOW 1-10)
+    talent_name1: "",
+    talent_name2: "",
+    talent_name3: "",
+    talent_name4: "",
+    talent_name5: "",
+    ...initialSows,
 
-    // Bagian V: Pembayaran & Bank
+    // NEW: Kompetitor (1-10)
+    competitor1: "",
+    competitor2: "",
+    competitor3: "",
+    competitor4: "",
+    competitor5: "",
+    competitor6: "",
+    competitor7: "",
+    competitor8: "",
+    competitor9: "",
+    competitor10: "",
+
+    // V: Pembayaran & Bank
     project_fee: "",
     pph_23: "",
     grand_total: "",
@@ -149,7 +167,8 @@ export default function SPKView({
     bank_branch: "",
     bank_account_number: "",
     bank_account_name: "",
-    payment_date: "", // <%= payment_date %>
+    payment_date: "",
+    payment_terms: "14 hari",
   });
 
   const handleRemoveSpecificSow = (indexToRemove: number) => {
@@ -208,7 +227,6 @@ export default function SPKView({
         fetchSPK();
         setDeleteModal({ open: false, item: null });
       } else {
-        alert("Gagal menghapus SPK");
       }
     } catch (error) {
       console.error("Error delete:", error);
@@ -217,147 +235,209 @@ export default function SPKView({
     }
   };
 
-const handleOpenEdit = (item: any) => {
-  setEditingId(item.spk_number || item.number);
+  const handleOpenEdit = (item: any) => {
+    setEditingId(item.spk_number || item.number);
 
-  // 1. HELPER: Konversi teks "Februari 2026" jadi "2026-02"
-  const formatToMonthInput = (dateStr: string) => {
-    if (!dateStr) return "";
-    const ds = dateStr.trim();
-    
-    // Jika formatnya sudah ISO (2026-02)
-    if (ds.includes("-") && ds.split("-")[0].length === 4) return ds.substring(0, 7);
+    // 1. HELPER: Konversi teks "Februari 2026" jadi "2026-02"
+    const formatToMonthInput = (dateStr: string) => {
+      if (!dateStr) return "";
+      const ds = dateStr.trim();
+      if (ds.includes("-") && ds.split("-")[0].length === 4)
+        return ds.substring(0, 7);
 
-    const bulanIndo = [
-      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-    ];
-    
-    const parts = ds.split(" ");
-    if (parts.length === 2) {
-      const indexBulan = bulanIndo.indexOf(parts[0]) + 1;
-      const tahun = parts[1];
-      if (indexBulan > 0) return `${tahun}-${indexBulan.toString().padStart(2, "0")}`;
+      const bulanIndo = [
+        "Januari",
+        "Februari",
+        "Maret",
+        "April",
+        "Mei",
+        "Juni",
+        "Juli",
+        "Agustus",
+        "September",
+        "Oktober",
+        "November",
+        "Desember",
+      ];
+
+      const parts = ds.split(" ");
+      if (parts.length === 2) {
+        const indexBulan = bulanIndo.indexOf(parts[0]) + 1;
+        const tahun = parts[1];
+        if (indexBulan > 0)
+          return `${tahun}-${indexBulan.toString().padStart(2, "0")}`;
+      }
+      return "";
+    };
+
+    // 2. PEMBELAH: Pecah satu field campaign_period jadi dua (Start & End)
+    const period = item.campaign_period || "";
+    let rawStart = "";
+    let rawEnd = "";
+    if (period.includes(" – ")) {
+      const splitPeriod = period.split(" – ");
+      rawStart = splitPeriod[0];
+      rawEnd = splitPeriod[1];
+    } else if (period.includes(" - ")) {
+      const splitPeriod = period.split(" - ");
+      rawStart = splitPeriod[0];
+      rawEnd = splitPeriod[1];
+    } else {
+      rawStart = period;
+      rawEnd = period;
     }
-    return "";
+
+    // 3. LOGIC DETEKSI JUMLAH BARIS AKTIF (TALENT, COMPETITOR, SOW)
+
+    // Hitung Talent aktif (1-5)
+    let lastTalentIndex = 1;
+    for (let i = 1; i <= 5; i++) {
+      if (item[`talent_name${i}`] && item[`talent_name${i}`] !== "")
+        lastTalentIndex = i;
+    }
+    setActiveTalentCount(lastTalentIndex);
+
+    // Hitung Competitor aktif (1-10)
+    let lastCompIndex = 1;
+    for (let i = 1; i <= 10; i++) {
+      if (item[`competitor${i}`] && item[`competitor${i}`] !== "")
+        lastCompIndex = i;
+    }
+    setActiveCompetitorCount(lastCompIndex);
+
+    // Hitung SOW aktif (1-10)
+    let lastSowIndex = 1;
+    for (let i = 1; i <= 10; i++) {
+      if (item[`sow${i}`] && item[`sow${i}`] !== "") lastSowIndex = i;
+    }
+    setActiveSowCount(lastSowIndex);
+    setSowIds(Array.from({ length: lastSowIndex }, (_, i) => Date.now() + i));
+
+    // 4. MAPPING DATA (Termasuk Talent & Competitor Dinamis)
+    const sowData = Array.from({ length: 10 }).reduce<Record<string, string>>(
+      (acc, _, i) => {
+        const n = i + 1;
+        acc[`sow${n}`] = item[`sow${n}`] || "";
+        acc[`jumlah${n}`] = item[`jumlah${n}`] || "";
+        acc[`keterangan${n}_1`] = item[`keterangan${n}_1`] || "";
+        acc[`keterangan${n}_2`] = item[`keterangan${n}_2`] || "";
+        acc[`keterangan${n}_3`] = item[`keterangan${n}_3`] || "";
+        return acc;
+      },
+      {},
+    );
+
+    const talentData = Array.from({ length: 5 }).reduce<Record<string, string>>(
+      (acc, _, i) => {
+        const n = i + 1;
+        acc[`talent_name${n}`] = item[`talent_name${n}`] || "";
+        return acc;
+      },
+      {},
+    );
+
+    const competitorData = Array.from({ length: 10 }).reduce<
+      Record<string, string>
+    >((acc, _, i) => {
+      const n = i + 1;
+      acc[`competitor${n}`] = item[`competitor${n}`] || "";
+      return acc;
+    }, {});
+
+    const natureRaw = item.collab_nature || "";
+    const natureStatus = natureRaw.toUpperCase().includes("NON-EKSLUSIF")
+      ? "Non-Eksklusif"
+      : "Eksklusif";
+
+    // 5. SET FORM DATA
+    setFormData({
+      ...initialSows,
+      ...sowData,
+      ...talentData,
+      ...competitorData,
+      first_party_signer: item.first_party_signer || "",
+      first_party_position: item.first_party_position || "",
+      vendor_name: item.vendor_name || "",
+      vendor_nik: item.vendor_nik || "",
+      vendor_address: item.vendor_address || "",
+      vendor_role: item.vendor_role || "",
+      vendor_company_name: item.vendor_company_name || "",
+      brand_name: item.brand_name || "",
+      business_type: item.business_type || "",
+      collab_type: item.collab_type || "",
+      campaign_start: formatToMonthInput(rawStart),
+      campaign_end: formatToMonthInput(rawEnd),
+      collab_nature: natureStatus,
+      project_fee: (item.project_fee || "").toString().replace(/\D/g, ""),
+      pph_23: (item.pph_23 || "").toString().replace(/\D/g, ""),
+      grand_total: (item.grand_total || "").toString().replace(/\D/g, ""),
+      grand_total_words: item.grand_total_words || "",
+      bank_name: item.bank_name || "",
+      bank_branch: item.bank_branch || "",
+      bank_account_number: item.bank_account_number || "",
+      bank_account_name: item.bank_account_name || "",
+      payment_date: item.payment_date_raw || "",
+      payment_terms: item.payment_terms || "14 hari",
+    } as any);
+
+    setIsFormOpen(true);
   };
-
-  // 2. PEMBELAH: Pecah satu field campaign_period jadi dua (Start & End)
-  const period = item.campaign_period || "";
-  let rawStart = "";
-  let rawEnd = "";
-
-  if (period.includes(" – ")) { // Cek strip panjang
-    const splitPeriod = period.split(" – ");
-    rawStart = splitPeriod[0];
-    rawEnd = splitPeriod[1];
-  } else if (period.includes(" - ")) { // Cek strip pendek
-    const splitPeriod = period.split(" - ");
-    rawStart = splitPeriod[0];
-    rawEnd = splitPeriod[1];
-  } else {
-    rawStart = period;
-    rawEnd = period;
-  }
-
-  // 3. MAPPING SOW DENGAN FIX TYPESCRIPT (Pake 'as any' di ujung)
-  const sowData: { [key: string]: string } = Array.from({ length: 10 }).reduce((acc: { [key: string]: string }, _, i) => {
-    const n = i + 1;
-    acc[`sow${n}`] = item[`sow${n}`] || "";
-    acc[`jumlah${n}`] = item[`jumlah${n}`] || "";
-    acc[`keterangan${n}_1`] = item[`keterangan${n}_1`] || "";
-    acc[`keterangan${n}_2`] = item[`keterangan${n}_2`] || "";
-    acc[`keterangan${n}_3`] = item[`keterangan${n}_3`] || "";
-    return acc;
-  }, {});
-
-  const natureRaw = item.collab_nature || "";
-  const natureStatus = natureRaw.toUpperCase().includes("NON-EKSLUSIF") ? "Non-Eksklusif" : "Eksklusif";
-
-  // 4. SET FORM DATA (Pake 'as any' di ujung objek)
-  setFormData({
-    ...initialSows,
-    ...sowData, 
-    first_party_signer: item.first_party_signer || "",
-    first_party_position: item.first_party_position || "",
-    vendor_name: item.vendor_name || "",
-    vendor_nik: item.vendor_nik || "",
-    vendor_address: item.vendor_address || "",
-    vendor_role: item.vendor_role || "",
-    vendor_company_name: item.vendor_company_name || "",
-    brand_name: item.brand_name || "",
-    business_type: item.business_type || "",
-    collab_type: item.collab_type || "",
-    
-    // INPUT BULAN SEKARANG OTOMATIS TERISI
-    campaign_start: formatToMonthInput(rawStart),
-    campaign_end: formatToMonthInput(rawEnd),
-    
-    collab_nature: natureStatus,
-    talent_name: item.talent_name || "",
-    project_fee: (item.project_fee || "").toString().replace(/\D/g, ""),
-    pph_23: (item.pph_23 || "").toString().replace(/\D/g, ""),
-    grand_total: (item.grand_total || "").toString().replace(/\D/g, ""),
-    grand_total_words: item.grand_total_words || "",
-    bank_name: item.bank_name || "",
-    bank_branch: item.bank_branch || "",
-    bank_account_number: item.bank_account_number || "",
-    bank_account_name: item.bank_account_name || "",
-    payment_date: item.payment_date_raw || "", 
-  } as any);
-
-  // Set jumlah SOW yang terbuka di UI
-  let lastActiveIndex = 1;
-  for (let i = 1; i <= 10; i++) {
-    if (item[`sow${i}`] && item[`sow${i}`] !== "") lastActiveIndex = i;
-  }
-  setActiveSowCount(lastActiveIndex);
-  setSowIds(Array.from({ length: lastActiveIndex }, (_, i) => Date.now() + i));
-  
-  setIsFormOpen(true);
-};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // 1. Logic Rentang Kampanye (1x tulis kalau bulan sama)
+    // 1. Logic Rentang Kampanye
     const startFormat = formatTanggalIndo(formData.campaign_start);
     const endFormat = formatTanggalIndo(formData.campaign_end);
     const campaign_period =
       startFormat === endFormat ? startFormat : `${startFormat} - ${endFormat}`;
 
-    // 2. Logic Teks Sifat Kerjasama (Pake tag <b> untuk Bold di PDF)
-    const eksklusifText =
-      "<b>Eksklusif.</b> Selama Jangka Waktu Kampanye Pemasaran, <b>Talent dilarang</b> untuk bekerja sama, mempromosikan, mengeluarkan komentar positif dan/atau terlihat di muka publik menggunakan <b>produk pesaing Merek</b> pada jenis perusahaan yang sama. Dan/atau mengeluarkan komentar positif terhadap barang alternatif atau pengganti dari Merek.";
+    // 2. Gabungkan List Competitor untuk Teks Kontrak (Hanya yang diisi)
+    const listCompetitor = [
+      formData.competitor1,
+      formData.competitor2,
+      formData.competitor3,
+      formData.competitor4,
+      formData.competitor5,
+      formData.competitor6,
+      formData.competitor7,
+      formData.competitor8,
+      formData.competitor9,
+      formData.competitor10,
+    ]
+      .filter((c) => c && c.trim() !== "")
+      .join(", ");
+
+    // 3. Logic Teks Sifat Kerjasama (Inject list kompetitor ke dalam teks)
+    const eksklusifText = `<b>Eksklusif.</b> Selama Jangka Waktu Kampanye Pemasaran, <b>Talent dilarang</b> untuk bekerja sama, mempromosikan, mengeluarkan komentar positif dan/atau terlihat di muka publik menggunakan <b>produk pesaing Merek</b> (Kompetitor: ${listCompetitor || "Produk sejenis"}) pada jenis perusahaan yang sama. Dan/atau mengeluarkan komentar positif terhadap barang alternatif atau pengganti dari Merek.`;
 
     const nonEksklusifText =
       "<b>Non-Eksklusif.</b> Selama Jangka Waktu Kampanye Pemasaran, <b>Talent berhak</b> untuk bekerja sama dengan pihak ketiga manapun. Perjanjian ini tidak membatasi kebebasan Talent untuk mengulas, memberikan penilaian, dan/atau menyatakan pendapatnya atas produk apa pun.";
 
-    // 3. Susun Payload Dasar
+    // 4. Susun Payload Dasar
     const payload: any = {
       ...formData,
       campaign_period,
-      // Pilih teks panjang berdasarkan pilihan dropdown
       collab_nature:
         formData.collab_nature === "Eksklusif"
           ? eksklusifText
           : nonEksklusifText,
       payment_date: formatTanggalIndo(formData.payment_date),
-      // Format angka ke ribuan (pake titik) sesuai contoh API lo
       project_fee: Number(formData.project_fee).toLocaleString("id-ID"),
       pph_23: Number(formData.pph_23).toLocaleString("id-ID"),
       grand_total: Number(formData.grand_total).toLocaleString("id-ID"),
-      // Tanggal pembuatan SPK (Hari ini)
       created_at: new Date().toLocaleDateString("id-ID", {
         day: "numeric",
         month: "long",
         year: "numeric",
       }),
-      payment_terms: "14 hari",
     };
 
-    // 4. Logic OTOMATIS NULL untuk SOW 1-10 yang tidak diisi
+    // 5. Logic OTOMATIS NULL (SOW, Talent, & Competitor)
+    // Supaya database bersih dari string kosong ""
+
+    // Bersihkan SOW 1-10
     for (let i = 1; i <= 10; i++) {
       if (i > activeSowCount) {
         payload[`sow${i}`] = null;
@@ -365,23 +445,31 @@ const handleOpenEdit = (item: any) => {
         payload[`keterangan${i}_1`] = null;
         payload[`keterangan${i}_2`] = null;
         payload[`keterangan${i}_3`] = null;
-      } else {
-        // Jika diisi tapi kosong, tetap kirim null biar database bersih
-        payload[`sow${i}`] =
-          formData[`sow${i}` as keyof typeof formData] || null;
-        payload[`jumlah${i}`] =
-          formData[`jumlah${i}` as keyof typeof formData] || null;
-        payload[`keterangan${i}_1`] =
-          formData[`keterangan${i}_1` as keyof typeof formData] || null;
-        payload[`keterangan${i}_2`] =
-          formData[`keterangan${i}_2` as keyof typeof formData] || null;
-        payload[`keterangan${i}_3`] =
-          formData[`keterangan${i}_3` as keyof typeof formData] || null;
       }
     }
 
-    // 5. Tentukan URL & Method (POST untuk baru, PUT untuk edit)
-    // Gunakan encodeURIComponent karena nomor SPK mengandung karakter '/'
+    // Fix Talent: Pastikan data yang ada di formData diprioritaskan masuk ke payload
+    for (let i = 1; i <= 5; i++) {
+      const value = formData[`talent_name${i}` as keyof typeof formData];
+      // Jika index di luar jumlah aktif ATAU inputnya kosong melompong, set NULL
+      if (i > activeTalentCount || !value || value.trim() === "") {
+        payload[`talent_name${i}`] = null;
+      } else {
+        payload[`talent_name${i}`] = value; // Pastikan value asli masuk
+      }
+    }
+
+
+    for (let i = 1; i <= 10; i++) {
+      const value = formData[`competitor${i}` as keyof typeof formData];
+      if (i > activeCompetitorCount || !value || value.trim() === "") {
+        payload[`competitor${i}`] = null;
+      } else {
+        payload[`competitor${i}`] = value; 
+      }
+    }
+
+    // 6. Eksekusi API
     const targetId = editingId ? encodeURIComponent(String(editingId)) : "";
     const url = editingId ? `/api/spk/${targetId}` : "/api/spk";
     const method = editingId ? "PUT" : "POST";
@@ -394,11 +482,12 @@ const handleOpenEdit = (item: any) => {
       });
 
       if (response.ok) {
-        await fetchSPK(); // Refresh data tabel
-        setIsFormOpen(false); // Tutup form
-        setEditingId(null); // Reset mode edit
+        await fetchSPK();
+        setIsFormOpen(false);
+        setEditingId(null);
       } else {
         const errorData = await response.json();
+        alert(`Error: ${errorData.error || "Gagal menyimpan data"}`);
       }
     } catch (error) {
       console.error("Submit Error:", error);
@@ -620,7 +709,7 @@ const handleOpenEdit = (item: any) => {
                 </div>
               </section>
 
-              <section className="space-y-4">
+              <section className="space-y-6">
                 {/* HEADER TETAP DI ATAS */}
                 <div className="flex items-center gap-2 text-orange-600 border-b pb-2">
                   <ListChecks size={18} />
@@ -629,22 +718,90 @@ const handleOpenEdit = (item: any) => {
                   </h4>
                 </div>
 
-                <InputGroup
-                  label="Nama Talent"
-                  name="talent_name"
-                  value={formData.talent_name}
-                  onChange={handleChange}
-                  placeholder="Nama Talent"
-                />
+                {/* --- SUB-SECTION 1: LIST TALENT (DINAMIS KEK SOW) --- */}
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                    Daftar Talent (Maks. 5)
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {Array.from({ length: activeTalentCount }).map(
+                      (_, index) => {
+                        const num = index + 1;
+                        return (
+                          <div
+                            key={`talent-wrapper-${num}`}
+                            className="relative group animate-in fade-in slide-in-from-left-2 duration-300"
+                          >
+                            <InputGroup
+                              label={`Talent ${num}`}
+                              name={`talent_name${num}`}
+                              value={
+                                formData[
+                                  `talent_name${num}` as keyof typeof formData
+                                ] || ""
+                              }
+                              onChange={handleChange}
+                              placeholder="Masukkan nama talent..."
+                            />
+                            {/* Tombol hapus muncul kalau lebih dari 1 talent */}
+                            {activeTalentCount > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData((prev: any) => {
+                                    const newData = { ...prev };
+                                    // Logic Geser Atas (Shift Up)
+                                    for (
+                                      let i = num;
+                                      i < activeTalentCount;
+                                      i++
+                                    ) {
+                                      newData[`talent_name${i}`] =
+                                        prev[`talent_name${i + 1}`];
+                                    }
+                                    newData[`talent_name${activeTalentCount}`] =
+                                      "";
+                                    return newData;
+                                  });
+                                  setActiveTalentCount((prev) => prev - 1);
+                                }}
+                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      },
+                    )}
 
-                {/* LIST SOW YANG DINAMIS */}
+                    {/* Tombol Tambah Talent (Kecil & Ngambang) */}
+                    {activeTalentCount < 5 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTalentCount((prev) => prev + 1)}
+                        className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-2 text-slate-400 hover:border-[#007AFF] hover:text-[#007AFF] hover:bg-blue-50 transition-all font-bold text-xs"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="h-px bg-slate-100 my-2"></div>
+
+                {/* --- SUB-SECTION 2: LIST SOW (DINAMIS) --- */}
                 <div className="space-y-6">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                    Daftar Scope of Work
+                  </label>
+
                   {sowIds.map((id, index) => {
                     const num = index + 1;
                     return (
                       <div
                         key={id}
-                        className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4"
+                        className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4 relative group animate-in zoom-in-95 duration-300"
                       >
                         <div className="flex justify-between items-center">
                           <span className="bg-[#1B3A5B] text-white text-[10px] font-bold px-3 py-1 rounded-full">
@@ -653,9 +810,10 @@ const handleOpenEdit = (item: any) => {
                           <button
                             type="button"
                             onClick={() => handleRemoveSpecificSow(num)}
-                            className="text-red-500 font-bold text-[10px] uppercase flex items-center gap-1"
+                            className="text-red-400 hover:text-red-600 transition-colors"
+                            title="Hapus SOW"
                           >
-                            <Trash2 size={20} />
+                            <Trash2 size={18} />
                           </button>
                         </div>
 
@@ -684,7 +842,6 @@ const handleOpenEdit = (item: any) => {
                           />
                         </div>
 
-                        {/* Keterangan 1, 2, 3 juga sama... */}
                         <div className="grid grid-cols-3 gap-3">
                           <InputGroup
                             label="KET 1"
@@ -720,18 +877,106 @@ const handleOpenEdit = (item: any) => {
                       </div>
                     );
                   })}
+
+                  {/* TOMBOL TAMBAH SOW */}
+                  {activeSowCount < 10 && (
+                    <button
+                      type="button"
+                      onClick={handleAddSow}
+                      className="w-full py-3 flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all font-bold text-sm"
+                    >
+                      <Plus size={16} /> 
+                    </button>
+                  )}
+                </div>
+              </section>
+
+              {/* --- SECTION: DAFTAR KOMPETITOR (DINAMIS) --- */}
+              <section className="space-y-4 p-5 bg-slate-50 rounded-2xl border border-slate-200 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <GiStrong size={18} className="text-red-500" />
+                    <h4 className="font-bold text-sm uppercase tracking-wider">
+                      Daftar Kompetitor
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                    {activeCompetitorCount}/10
+                  </span>
                 </div>
 
-                {/* TOMBOL TAMBAH DI BAWAH LIST SOW */}
-                {activeSowCount < 10 && (
-                  <button
-                    type="button"
-                    onClick={handleAddSow}
-                    className="w-full py-3 flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all font-bold text-sm"
-                  >
-                    <Plus size={16} />
-                  </button>
-                )}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {Array.from({ length: activeCompetitorCount }).map(
+                    (_, index) => {
+                      const num = index + 1;
+                      return (
+                        <div
+                          key={`comp-wrapper-${num}`}
+                          className="relative group animate-in zoom-in-95 duration-200"
+                        >
+                          <input
+                            name={`competitor${num}`}
+                            value={
+                              formData[
+                                `competitor${num}` as keyof typeof formData
+                              ] || ""
+                            }
+                            onChange={handleChange}
+                            placeholder={`Komp. ${num}`}
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-[#007AFF]/20 bg-white transition-all shadow-sm"
+                          />
+
+                          {/* Tombol Hapus Kompetitor (Muncul pas Hover) */}
+                          {activeCompetitorCount > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev: any) => {
+                                  const newData = { ...prev };
+                                  // Logic Geser Atas (Shift Up)
+                                  for (
+                                    let i = num;
+                                    i < activeCompetitorCount;
+                                    i++
+                                  ) {
+                                    newData[`competitor${i}`] =
+                                      prev[`competitor${i + 1}`];
+                                  }
+                                  newData[
+                                    `competitor${activeCompetitorCount}`
+                                  ] = "";
+                                  return newData;
+                                });
+                                setActiveCompetitorCount((prev) => prev - 1);
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 z-10"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    },
+                  )}
+
+                  {/* Tombol Tambah Kompetitor */}
+                  {activeCompetitorCount < 10 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveCompetitorCount((prev) => prev + 1)
+                      }
+                      className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 rounded-xl py-2 text-slate-400 hover:border-[#007AFF] hover:text-[#007AFF] hover:bg-white transition-all font-bold text-[10px] uppercase shadow-sm"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-[9px] text-slate-400 italic">
+                  *Input kompetitor ini akan otomatis digabungkan ke dalam
+                  kontrak Eksklusif di PDF.
+                </p>
               </section>
 
               {/* BAGIAN V: PEMBAYARAN (TAMBAHAN PDF PAGE 3) */}
@@ -835,7 +1080,7 @@ const handleOpenEdit = (item: any) => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-4 bg-[#007AFF] text-white rounded-2xl font-bold shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#007AFF] text-white rounded-2xl font-bold shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 hover:bg-[#007AFF]/80 flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -1044,7 +1289,7 @@ const handleOpenEdit = (item: any) => {
                               openActionId === item.id ? null : item.id,
                             )
                           }
-                          className="flex items-center gap-2 bg-[#007AFF] text-white px-4 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm hover:bg-[#254d75]"
+                          className="flex items-center gap-2 bg-[#007AFF]  text-white px-4 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm hover:bg-[#007AFF]/80"
                         >
                           Action
                           <ChevronDown

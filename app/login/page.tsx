@@ -1,11 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Mail, Lock, LogIn, AlertCircle, Clock } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  LogIn,
+  AlertCircle,
+  Clock,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 
 const LoginPage: React.FC = () => {
+  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const router = useRouter();
@@ -79,10 +88,20 @@ const LoginPage: React.FC = () => {
       if (res.ok) {
         router.push("/dashboard");
       } else {
-        setError("username or password incorrect");
+        // Tampilkan pesan error dari server atau fallback
+        const errorMessage = data.message || "username or password incorrect";
+        setError(errorMessage);
       }
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      // Log error untuk debugging
+      console.error("Login error:", err);
+      
+      // Tampilkan pesan error yang lebih deskriptif
+      if (err.message) {
+        setError(`Error: ${err.message}`);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -95,12 +114,20 @@ const LoginPage: React.FC = () => {
         {/* Overlay Lockout */}
         {lockoutTime > 0 && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md rounded-lg">
-            <div className="text-white text-2xl font-bold mb-2">Login Blocked</div>
-            <div className="text-orange-300 text-lg font-mono mb-1">{formatTime(lockoutTime)}</div>
-            <div className="text-white text-sm">Terlalu banyak percobaan. Silakan coba lagi nanti.</div>
+            <div className="text-white text-2xl font-bold mb-2">
+              Login Blocked
+            </div>
+            <div className="text-orange-300 text-lg font-mono mb-1">
+              {formatTime(lockoutTime)}
+            </div>
+            <div className="text-white text-sm">
+              Terlalu banyak percobaan. Silakan coba lagi nanti.
+            </div>
           </div>
         )}
-        <div className={`bg-black p-12 rounded-lg shadow-sm w-full max-w-md border border-gray-200 transition-all ${lockoutTime > 0 ? "blur-sm pointer-events-none" : ""}`}>
+        <div
+          className={`bg-black p-12 rounded-lg shadow-sm w-full max-w-md border border-gray-200 transition-all ${lockoutTime > 0 ? "blur-sm pointer-events-none" : ""}`}
+        >
           <h1 className="text-3xl font-semibold text-white text-center mb-10">
             Login
           </h1>
@@ -125,18 +152,33 @@ const LoginPage: React.FC = () => {
             {/* --- BAGIAN PASSWORD --- */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-white font-semibold text-sm">
-                <Lock className="h-4 w-4" />{" "}
-                {/* IKON PASSWORD DI SAMPING TEKS */}
+                <Lock className="h-4 w-4" />
                 <span>Password</span>
               </label>
-              <input
-                type="password"
-                placeholder="Enter your password"
-                className="block w-full text-black px-3 py-2.5 border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                {" "}
+                {/* Tambahin wrapper relative */}
+                <input
+                  type={showPassword ? "text" : "password"} // Logic ganti tipe input
+                  placeholder="Enter your password"
+                  className="block w-full text-black px-3 py-2.5 pr-10 border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                {/* Tombol Ikon Mata */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <Eye className="h-4 w-4" />
+                  ) : (
+                    <EyeOff className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
             {error && (
               <div className="flex flex-col items-center gap-2 text-red-500 text-sm font-medium p-3 bg-red-500/10 rounded-md border border-red-500/20">

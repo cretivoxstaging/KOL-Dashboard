@@ -83,25 +83,25 @@ export default function AddTalentModal({
   const [isSyncing, setIsSyncing] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        ...initialData,
-        tier_ig: initialData.tier_ig || initialData.tier || "Nano",
-        tier_tiktok: initialData.tier_tiktok || "Nano",
-        er: initialData.er || "0%",
-        source: initialData.source || "Artist/Celebrity",
-        domisili: initialData.domisili || "",
-        igAccount: initialData.igAccount || "",
-        status: initialData.status || "Active",
-        youtube_username: initialData.youtube_username || "",
-        youtube_subscriber: initialData.youtube_subscriber ?? "",
-        email: initialData.email || "",
-        hijab: initialData.hijab || "no",
-        gender: initialData.gender || "",
-      });
-    }
-  }, [initialData]);
+useEffect(() => {
+  if (!initialData || Object.keys(initialData).length === 0) return;
+
+  setFormData({
+    ...initialData,
+    tier_ig: initialData.tier_ig || initialData.tier || "Nano",
+    tier_tiktok: initialData.tier_tiktok || "Nano",
+    er: initialData.er || "0%",
+    source: initialData.source || "Artist/Celebrity",
+    domisili: initialData.domisili || "",
+    igAccount: initialData.igAccount || "",
+    status: initialData.status || "Active",
+    youtube_username: initialData.youtube_username || "",
+    youtube_subscriber: initialData.youtube_subscriber ?? "",
+    email: initialData.email || "",
+    hijab: initialData.hijab || "no",
+    gender: initialData.gender || "",
+  });
+}, [initialData]);
 
   const handleSubmit = async () => {
     if (!formData.name) return alert("Nama wajib diisi!");
@@ -550,16 +550,20 @@ function Input({ label, type = "text", placeholder, value, onChange }: any) {
 }
 
 function Select({ label, options, value, onChange }: any) {
+  // Pastikan value tidak undefined/null agar select tidak 'uncontrolled'
+  const safeValue = value || options[0] || ""; 
+
   return (
     <div>
       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
         {label}
       </label>
       <select
-        value={value}
+        value={safeValue}
         onChange={(e) => onChange(e.target.value)}
         className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm outline-none bg-white"
       >
+        {/* Tambahin option kosong/default jika perlu */}
         {options.map((opt: string) => (
           <option key={opt} value={opt}>
             {opt}

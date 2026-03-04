@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import DashboardView from "../../components/DashboardView";
 import TaxCalculatorView from "../../components/TaxCalculatorView";
@@ -10,7 +10,7 @@ import AddTalentModal from "@/components/talent/AddTalentModal";
 import Sidebar from "./Sidebar";
 import { useTalentData } from "./useTalentData";
 
-export default function Page() {
+function DashboardContent() {
   const router = useRouter();
 
   const {
@@ -191,5 +191,12 @@ export default function Page() {
         )}
       </main>
     </div>
+  );
+}
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

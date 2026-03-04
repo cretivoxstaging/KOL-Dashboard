@@ -1,11 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const API_URL = process.env.SPK_URL; 
 const AUTH_TOKEN = process.env.SPK_TOKEN;
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: NextRequest, 
+  { params }: { params: Promise<{ id: string }> } 
+) {
   try {
-    const { id } = await params; 
+    const { id } = await params;
     const body = await req.json();
 
     const spkNumber = decodeURIComponent(id);
@@ -28,8 +31,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-// DELETE tetap sama seperti yang udah jalan
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: NextRequest, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params;
     const res = await fetch(`${API_URL}/${id}`, {

@@ -326,7 +326,7 @@ export function useTalentData() {
         tier_ig: currentIgTier,
         tier_tiktok: currentTtTier,
         er: formData.er,
-        source: talentToEdit ? formData.source : "Manual",
+        source: formData.source,
         tier: currentIgTier,
         last_update: new Date().toISOString(),
         email: formData.email,

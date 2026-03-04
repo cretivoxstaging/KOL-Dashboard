@@ -84,7 +84,7 @@ export default function SPKDeleteModal({
               placeholder="Type 'delete' here..."
               value={confirmText}
               onChange={(e) => onConfirmTextChange(e.target.value)}
-              className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 outline-none focus:ring-4 focus:ring-red-500/5 focus:border-red-200 transition-all text-sm"
+              className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 outline-none focus:ring-4 focus:ring-red-500/5 focus:border-red-200 transition-all text-sm text-black bg-white"
             />
           </div>
 

@@ -115,7 +115,7 @@ const LoginPage: React.FC = () => {
               <input
                 type="text"
                 placeholder="Enter your email"
-                className="block w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="block w-full text-black px-3 py-2.5 border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -132,7 +132,7 @@ const LoginPage: React.FC = () => {
               <input
                 type="password"
                 placeholder="Enter your password"
-                className="block w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="block w-full text-black px-3 py-2.5 border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

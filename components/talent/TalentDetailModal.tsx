@@ -1,7 +1,27 @@
+/**
+ * ============================================
+ * TALENT DETAIL MODAL - VIEW COMPONENT
+ * ============================================
+ * 
+ * Modal untuk menampilkan detail lengkap talent dalam read-only mode
+ * 
+ * Fitur:
+ * - Display semua informasi talent dengan format rapi
+ * - Organize data by sections (Profile, Demographics, Status, Contact, Banking)
+ * - External links untuk social media (Instagram, TikTok, YouTube, Twitter)
+ * - Responsive layout dengan grid system
+ * - DetailItem component untuk konsistensi tampilan
+ * 
+ * Props:
+ * - isOpen: Control modal visibility
+ * - onClose: Handler untuk close modal
+ * - talent: Talent data object
+ */
+
 import React from "react";
 import { Plus, Clock, Instagram } from "lucide-react";
 import DetailItem from "./DetailItem";
-import { Talent } from "../types";
+import { Talent } from "../../types";
 
 interface TalentDetailModalProps {
   selectedDetail: Talent;
@@ -108,11 +128,12 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
                   <p className="text-xs font-bold text-slate-300">-</p>
                 )}
               </div>
-              <DetailItem label="Ethnicity" value={selectedDetail.suku} />
+              <DetailItem label="Gender" value={selectedDetail.gender || "-"} />
               <DetailItem label="Religion" value={selectedDetail.agama} />
+              <DetailItem label="Occupation" value={selectedDetail.pekerjaan} />
+              <DetailItem label="Ethnicity" value={selectedDetail.suku} />
               <DetailItem label="Zodiac" value={selectedDetail.zodiac} />
               <DetailItem label="Hobby" value={selectedDetail.hobby} />
-              <DetailItem label="Occupation" value={selectedDetail.pekerjaan} />
               <DetailItem
                 label="Education"
                 value={selectedDetail.tempatKuliah}
@@ -121,7 +142,6 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
                 label="Domisili / Location"
                 value={selectedDetail.domisili}
               />
-              <DetailItem label="Gender" value={selectedDetail.gender || "-"} />
               <DetailItem
                 label="Hijab Status"
                 value={selectedDetail.hijab === "yes" ? "Hijab" : "Non-Hijab"}

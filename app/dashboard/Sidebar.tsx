@@ -24,7 +24,7 @@ function SidebarItem({ icon, label, active, collapsed, onClick }: any) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${active ? "bg-[#007AFF] hover:bg-[#007AFF]/80 text-white shadow-lg" : "text-slate-400 hover:bg-slate-200"} ${collapsed ? "justify-center" : ""}`}
+      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${active ? "bg-[#007AFF] hover:bg-[#007AFF]/80 text-white shadow-lg" : "text-slate-800 hover:bg-slate-200"} ${collapsed ? "justify-center" : ""}`}
       title={collapsed ? label : ""}
     >
       <div className="shrink-0">{icon}</div>
@@ -81,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <Menu size={24} />
         </button>
       </div>
-      <nav className="flex-1 space-y-2 px-4">
+      <nav className="flex-1 space-y-2 px-4 ">
         <SidebarItem
           icon={<LayoutDashboard size={20} />}
           label="Dashboard"

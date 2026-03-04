@@ -12,6 +12,7 @@ import {
   ListChecks,
   Banknote,
   Pencil,
+  RefreshCw,
 } from "lucide-react";
 import { GiStrong } from "react-icons/gi";
 
@@ -48,6 +49,19 @@ export default function SPKView({
   });
   const [confirmText, setConfirmText] = useState("");
 
+  const handleRealTimeRefresh = async () => {
+    setIsLoading(true);
+    try {
+      await fetchSPK();
+      // Opsional: kasih toast kalau mau gaya
+      console.log("Data SPK berhasil diperbarui");
+    } catch (error) {
+      console.error("Gagal refresh data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Buat helper untuk generate initial SOW 1-10
   const initialSows: { [key: string]: string } = Array.from({
     length: 10,
@@ -60,19 +74,99 @@ export default function SPKView({
     acc[`keterangan${n}_3`] = "";
     return acc;
   }, {});
-
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData({
+      first_party_signer: "",
+      first_party_position: "",
+      vendor_name: "",
+      vendor_nik: "",
+      vendor_address: "",
+      vendor_role: "",
+      vendor_company_name: "",
+      brand_name: "",
+      business_type: "",
+      collab_type: "",
+      campaign_start: "",
+      campaign_end: "",
+      campaign_period: "",
+      collab_nature: "Eksklusif",
+      talent_name1: "",
+      talent_name2: "",
+      talent_name3: "",
+      talent_name4: "",
+      talent_name5: "",
+      ...initialSows, // initialSows yang udah lo definisikan di atas
+      competitor1: "",
+      competitor2: "",
+      competitor3: "",
+      competitor4: "",
+      competitor5: "",
+      competitor6: "",
+      competitor7: "",
+      competitor8: "",
+      competitor9: "",
+      competitor10: "",
+      project_fee: "",
+      pph_23: "",
+      grand_total: "",
+      grand_total_words: "",
+      bank_name: "",
+      bank_branch: "",
+      bank_account_number: "",
+      bank_account_name: "",
+      payment_date: "",
+      payment_terms: "14 hari",
+    });
+    setActiveSowCount(1);
+    setActiveTalentCount(1);
+    setActiveCompetitorCount(1);
+    setSowIds([Date.now()]);
+  };
   const filteredAndSortedSPK = propsSpkList
     .filter((item) => {
       const searchTerm = searchQuery.toLowerCase();
+
+      // 1. Logic Search (Teks)
       const matchesSearch =
+        item.talent_name1?.toLowerCase().includes(searchTerm) ||
+        item.talent_name2?.toLowerCase().includes(searchTerm) ||
+        item.talent_name3?.toLowerCase().includes(searchTerm) ||
+        item.talent_name4?.toLowerCase().includes(searchTerm) ||
+        item.talent_name5?.toLowerCase().includes(searchTerm) ||
         (item.talent_name || item.talent)?.toLowerCase().includes(searchTerm) ||
         (item.brand_name || item.brand)?.toLowerCase().includes(searchTerm) ||
         (item.spk_number || item.number)?.toLowerCase().includes(searchTerm);
 
-      return matchesSearch;
+      // 2. Logic Filter Tanggal (Format: "12 Januari 2026")
+      const dateString = item.created_at || item.date || ""; // Cek field mana yang isi tanggal teks
+      const parts = dateString.split(" "); // Pecah jadi ["12", "Januari", "2026"]
+
+      const bulanIndo: { [key: string]: string } = {
+        Januari: "01",
+        Februari: "02",
+        Maret: "03",
+        April: "04",
+        Mei: "05",
+        Juni: "06",
+        Juli: "07",
+        Agustus: "08",
+        September: "09",
+        Oktober: "10",
+        November: "11",
+        Desember: "12",
+      };
+
+      const itemMonth = parts[1] ? bulanIndo[parts[1]] : ""; // Ambil "Januari" -> "01"
+      const itemYear = parts[2] || ""; // Ambil "2026"
+
+      const matchesMonth =
+        selectedMonth === "all" || itemMonth === selectedMonth;
+      const matchesYear = selectedYear === "all" || itemYear === selectedYear;
+
+      return matchesSearch && matchesMonth && matchesYear;
     })
     .sort((a, b) => {
-      // Sort logic tetep aman kalo lo tetep dapet field 'date' atau 'id'
       return sortOrder === "desc" ? b.id - a.id : a.id - b.id;
     });
 
@@ -223,10 +317,10 @@ export default function SPKView({
       });
 
       if (res.ok) {
-        // Gak perlu alert lagi biar modern, langsung fetch aja
-        fetchSPK();
         setDeleteModal({ open: false, item: null });
-      } else {
+        setConfirmText("");
+
+        await fetchSPK();
       }
     } catch (error) {
       console.error("Error delete:", error);
@@ -244,7 +338,6 @@ export default function SPKView({
       const ds = dateStr.trim();
       if (ds.includes("-") && ds.split("-")[0].length === 4)
         return ds.substring(0, 7);
-
       const bulanIndo = [
         "Januari",
         "Februari",
@@ -259,7 +352,6 @@ export default function SPKView({
         "November",
         "Desember",
       ];
-
       const parts = ds.split(" ");
       if (parts.length === 2) {
         const indexBulan = bulanIndo.indexOf(parts[0]) + 1;
@@ -270,26 +362,24 @@ export default function SPKView({
       return "";
     };
 
-    // 2. PEMBELAH: Pecah satu field campaign_period jadi dua (Start & End)
+    // 2. PEMBELAH PERIODE
     const period = item.campaign_period || "";
-    let rawStart = "";
-    let rawEnd = "";
+    let rawStart = "",
+      rawEnd = "";
     if (period.includes(" – ")) {
-      const splitPeriod = period.split(" – ");
-      rawStart = splitPeriod[0];
-      rawEnd = splitPeriod[1];
+      const s = period.split(" – ");
+      rawStart = s[0];
+      rawEnd = s[1];
     } else if (period.includes(" - ")) {
-      const splitPeriod = period.split(" - ");
-      rawStart = splitPeriod[0];
-      rawEnd = splitPeriod[1];
+      const s = period.split(" - ");
+      rawStart = s[0];
+      rawEnd = s[1];
     } else {
       rawStart = period;
       rawEnd = period;
     }
 
-    // 3. LOGIC DETEKSI JUMLAH BARIS AKTIF (TALENT, COMPETITOR, SOW)
-
-    // Hitung Talent aktif (1-5)
+    // 3. LOGIC DETEKSI JUMLAH BARIS AKTIF
     let lastTalentIndex = 1;
     for (let i = 1; i <= 5; i++) {
       if (item[`talent_name${i}`] && item[`talent_name${i}`] !== "")
@@ -297,7 +387,6 @@ export default function SPKView({
     }
     setActiveTalentCount(lastTalentIndex);
 
-    // Hitung Competitor aktif (1-10)
     let lastCompIndex = 1;
     for (let i = 1; i <= 10; i++) {
       if (item[`competitor${i}`] && item[`competitor${i}`] !== "")
@@ -305,7 +394,6 @@ export default function SPKView({
     }
     setActiveCompetitorCount(lastCompIndex);
 
-    // Hitung SOW aktif (1-10)
     let lastSowIndex = 1;
     for (let i = 1; i <= 10; i++) {
       if (item[`sow${i}`] && item[`sow${i}`] !== "") lastSowIndex = i;
@@ -313,7 +401,19 @@ export default function SPKView({
     setActiveSowCount(lastSowIndex);
     setSowIds(Array.from({ length: lastSowIndex }, (_, i) => Date.now() + i));
 
-    // 4. MAPPING DATA (Termasuk Talent & Competitor Dinamis)
+    // 4. KUNCI FIX 6-10: RESET SEMUA VARIABEL DINAMIS DULU
+    const resetData: Record<string, string> = {};
+    for (let i = 1; i <= 10; i++) {
+      resetData[`competitor${i}`] = "";
+      resetData[`sow${i}`] = "";
+      resetData[`jumlah${i}`] = "";
+      resetData[`keterangan${i}_1`] = "";
+      resetData[`keterangan${i}_2`] = "";
+      resetData[`keterangan${i}_3`] = "";
+      if (i <= 5) resetData[`talent_name${i}`] = "";
+    }
+
+    // 5. MAPPING DATA ASLI DARI DATABASE
     const sowData = Array.from({ length: 10 }).reduce<Record<string, string>>(
       (acc, _, i) => {
         const n = i + 1;
@@ -344,17 +444,13 @@ export default function SPKView({
       return acc;
     }, {});
 
-    const natureRaw = item.collab_nature || "";
-    const natureStatus = natureRaw.toUpperCase().includes("NON-EKSLUSIF")
-      ? "Non-Eksklusif"
-      : "Eksklusif";
-
-    // 5. SET FORM DATA
+    // 6. SET FORM DATA (URUTAN SPREAD SANGAT PENTING)
     setFormData({
-      ...initialSows,
-      ...sowData,
-      ...talentData,
-      ...competitorData,
+      ...formData, // Ambil state yang sekarang
+      ...resetData, // PAKSA JADI KOSONG DULU SEMUA (1-10)
+      ...talentData, // Isi Talent baru dari DB
+      ...sowData, // Isi SOW baru dari DB
+      ...competitorData, // Isi Competitor baru dari DB
       first_party_signer: item.first_party_signer || "",
       first_party_position: item.first_party_position || "",
       vendor_name: item.vendor_name || "",
@@ -367,7 +463,9 @@ export default function SPKView({
       collab_type: item.collab_type || "",
       campaign_start: formatToMonthInput(rawStart),
       campaign_end: formatToMonthInput(rawEnd),
-      collab_nature: natureStatus,
+      collab_nature: item.collab_nature?.toUpperCase().includes("NON-EKSLUSIF")
+        ? "Non-Eksklusif"
+        : "Eksklusif",
       project_fee: (item.project_fee || "").toString().replace(/\D/g, ""),
       pph_23: (item.pph_23 || "").toString().replace(/\D/g, ""),
       grand_total: (item.grand_total || "").toString().replace(/\D/g, ""),
@@ -393,40 +491,55 @@ export default function SPKView({
     const campaign_period =
       startFormat === endFormat ? startFormat : `${startFormat} - ${endFormat}`;
 
-    // 2. Gabungkan List Competitor untuk Teks Kontrak (Hanya yang diisi)
-    const listCompetitor = [
-      formData.competitor1,
-      formData.competitor2,
-      formData.competitor3,
-      formData.competitor4,
-      formData.competitor5,
-      formData.competitor6,
-      formData.competitor7,
-      formData.competitor8,
-      formData.competitor9,
-      formData.competitor10,
-    ]
-      .filter((c) => c && c.trim() !== "")
-      .join(", ");
+    // 2. Filter Competitor yang AKTIF saja untuk teks kontrak PDF
+    const activeCompetitorsList = [];
+    for (let i = 1; i <= 10; i++) {
+      const val = formData[`competitor${i}` as keyof typeof formData];
+      if (i <= activeCompetitorCount && val && val.trim() !== "") {
+        activeCompetitorsList.push(val.trim());
+      }
+    }
+    const listCompetitorText = activeCompetitorsList.join(", ");
 
-    // 3. Logic Teks Sifat Kerjasama (Inject list kompetitor ke dalam teks)
-    const eksklusifText = `<b>Eksklusif.</b> Selama Jangka Waktu Kampanye Pemasaran, <b>Talent dilarang</b> untuk bekerja sama, mempromosikan, mengeluarkan komentar positif dan/atau terlihat di muka publik menggunakan <b>produk pesaing Merek</b> (Kompetitor: ${listCompetitor || "Produk sejenis"}) pada jenis perusahaan yang sama. Dan/atau mengeluarkan komentar positif terhadap barang alternatif atau pengganti dari Merek.`;
-
+    // 3. Logic Teks Sifat Kerjasama
+    const eksklusifText = `<b>Eksklusif.</b> Selama Jangka Waktu Kampanye Pemasaran, Pihak kedua <b>dilarang untuk bekerja sama, mempromosikan, mengeluarkan komentar positif dan/atau terlihat di muka publik menggunakan produk pesaing Merek pada jenis perusahaan yang sama.</b> Dan/atau mengeluarkan komentar positif terhadap barang alternatif atau pengganti dari Merek.`;
     const nonEksklusifText =
-      "<b>Non-Eksklusif.</b> Selama Jangka Waktu Kampanye Pemasaran, <b>Talent berhak</b> untuk bekerja sama dengan pihak ketiga manapun. Perjanjian ini tidak membatasi kebebasan Talent untuk mengulas, memberikan penilaian, dan/atau menyatakan pendapatnya atas produk apa pun.";
+      "<b>Non-Eksklusif.</b> Selama Jangka Waktu Kampanye Pemasaran, Talent berhak untuk bekerja sama dengan pihak ketiga manapun. Perjanjian ini tidak membatasi kebebasan Talent dan/atau Pihak Kedua untuk mengulas, memberikan penilaian, dan/atau menyatakan pendapatnya atas produk apapun";
 
-    // 4. Susun Payload Dasar
+    // 4. Susun Payload SECARA MANUAL (Tanpa spread ...formData agar bersih)
     const payload: any = {
-      ...formData,
-      campaign_period,
+      // Identitas Perusahaan
+      first_party_signer: formData.first_party_signer,
+      first_party_position: formData.first_party_position,
+
+      // Identitas Vendor
+      vendor_name: formData.vendor_name,
+      vendor_nik: formData.vendor_nik,
+      vendor_address: formData.vendor_address,
+      vendor_role: formData.vendor_role,
+      vendor_company_name: formData.vendor_company_name,
+
+      // Ketentuan Komersial
+      brand_name: formData.brand_name,
+      business_type: formData.business_type,
+      collab_type: formData.collab_type,
+      campaign_period: campaign_period,
       collab_nature:
         formData.collab_nature === "Eksklusif"
           ? eksklusifText
           : nonEksklusifText,
-      payment_date: formatTanggalIndo(formData.payment_date),
+
+      // Pembayaran & Bank
       project_fee: Number(formData.project_fee).toLocaleString("id-ID"),
       pph_23: Number(formData.pph_23).toLocaleString("id-ID"),
       grand_total: Number(formData.grand_total).toLocaleString("id-ID"),
+      grand_total_words: formData.grand_total_words,
+      bank_name: formData.bank_name,
+      bank_branch: formData.bank_branch,
+      bank_account_number: formData.bank_account_number,
+      bank_account_name: formData.bank_account_name,
+      payment_date: formatTanggalIndo(formData.payment_date),
+      payment_terms: "14 hari",
       created_at: new Date().toLocaleDateString("id-ID", {
         day: "numeric",
         month: "long",
@@ -434,42 +547,51 @@ export default function SPKView({
       }),
     };
 
-    // 5. Logic OTOMATIS NULL (SOW, Talent, & Competitor)
-    // Supaya database bersih dari string kosong ""
-
-    // Bersihkan SOW 1-10
+    // 5. Masukkan SOW (1-10) - Hanya yang aktif
     for (let i = 1; i <= 10; i++) {
-      if (i > activeSowCount) {
-        payload[`sow${i}`] = null;
-        payload[`jumlah${i}`] = null;
-        payload[`keterangan${i}_1`] = null;
-        payload[`keterangan${i}_2`] = null;
-        payload[`keterangan${i}_3`] = null;
+      if (i <= activeSowCount) {
+        payload[`sow${i}`] =
+          formData[`sow${i}` as keyof typeof formData] || null;
+        payload[`jumlah${i}`] =
+          formData[`jumlah${i}` as keyof typeof formData] || null;
+        payload[`keterangan${i}_1`] =
+          formData[`keterangan${i}_1` as keyof typeof formData] || null;
+        payload[`keterangan${i}_2`] =
+          formData[`keterangan${i}_2` as keyof typeof formData] || null;
+        payload[`keterangan${i}_3`] =
+          formData[`keterangan${i}_3` as keyof typeof formData] || null;
+      } else {
+        payload[`sow${i}`] =
+          payload[`jumlah${i}`] =
+          payload[`keterangan${i}_1`] =
+          payload[`keterangan${i}_2`] =
+          payload[`keterangan${i}_3`] =
+            null;
       }
     }
 
-    // Fix Talent: Pastikan data yang ada di formData diprioritaskan masuk ke payload
+    // 6. Masukkan Talent (1-5) - Hanya yang aktif
     for (let i = 1; i <= 5; i++) {
-      const value = formData[`talent_name${i}` as keyof typeof formData];
-      // Jika index di luar jumlah aktif ATAU inputnya kosong melompong, set NULL
-      if (i > activeTalentCount || !value || value.trim() === "") {
-        payload[`talent_name${i}`] = null;
-      } else {
-        payload[`talent_name${i}`] = value; // Pastikan value asli masuk
-      }
+      const val = formData[`talent_name${i}` as keyof typeof formData];
+      payload[`talent_name${i}`] =
+        i <= activeTalentCount && val && val.trim() !== "" ? val : null;
     }
 
-
+    // 7. Masukkan Competitor (1-10) - HANYA YANG AKTIF
     for (let i = 1; i <= 10; i++) {
-      const value = formData[`competitor${i}` as keyof typeof formData];
-      if (i > activeCompetitorCount || !value || value.trim() === "") {
-        payload[`competitor${i}`] = null;
+      const val = formData[`competitor${i}` as keyof typeof formData];
+      // Jika i lebih besar dari jumlah kotak yang tampil, PAKSA NULL
+      if (i <= activeCompetitorCount && val && val.trim() !== "") {
+        payload[`competitor${i}`] = val;
       } else {
-        payload[`competitor${i}`] = value; 
+        payload[`competitor${i}`] = null;
       }
     }
 
-    // 6. Eksekusi API
+    // DEBUG: Cek di console browser apakah competitor6-10 beneran null
+    console.log("FINAL PAYLOAD:", payload);
+
+    // 8. Eksekusi API
     const targetId = editingId ? encodeURIComponent(String(editingId)) : "";
     const url = editingId ? `/api/spk/${targetId}` : "/api/spk";
     const method = editingId ? "PUT" : "POST";
@@ -529,15 +651,15 @@ export default function SPKView({
 
   const availableYears = [
     ...new Set(
-      propsSpkList.map((item) => {
-        if (!item.date) return "";
-        const parts = item.date.split("/"); // Pecah 12/02/2026
-        return parts[2]; // Ambil 2026
-      }),
+      propsSpkList
+        .map((item) => {
+          const dateString = item.created_at || item.date || "";
+          const parts = dateString.split(" ");
+          return parts[2]; // Ambil elemen ke-3 (Tahun)
+        })
+        .filter(Boolean),
     ),
-  ]
-    .filter(Boolean)
-    .sort((a, b) => b.localeCompare(a)); // Urutin tahun terbaru
+  ].sort((a, b) => b.localeCompare(a));
 
   if (isFormOpen) {
     return (
@@ -549,7 +671,9 @@ export default function SPKView({
           >
             <ChevronLeft size={24} />
           </button>
-          <h2 className="text-2xl font-bold text-[#1B3A5B]">Buat SPK Baru</h2>
+          <h2 className="text-2xl font-bold text-[#1B3A5B]">
+            {editingId ? `Edit SPK ${editingId}` : "Buat SPK Baru"}
+          </h2>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -721,7 +845,7 @@ export default function SPKView({
                 {/* --- SUB-SECTION 1: LIST TALENT (DINAMIS KEK SOW) --- */}
                 <div className="space-y-4">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-                    Daftar Talent (Maks. 5)
+                    Daftar Talent
                   </label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {Array.from({ length: activeTalentCount }).map(
@@ -885,7 +1009,7 @@ export default function SPKView({
                       onClick={handleAddSow}
                       className="w-full py-3 flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all font-bold text-sm"
                     >
-                      <Plus size={16} /> 
+                      <Plus size={16} />
                     </button>
                   )}
                 </div>
@@ -933,18 +1057,12 @@ export default function SPKView({
                               onClick={() => {
                                 setFormData((prev: any) => {
                                   const newData = { ...prev };
-                                  // Logic Geser Atas (Shift Up)
-                                  for (
-                                    let i = num;
-                                    i < activeCompetitorCount;
-                                    i++
-                                  ) {
+                                  // 1. Geser data yang ada di bawah ke atas
+                                  for (let i = num; i < 10; i++) {
                                     newData[`competitor${i}`] =
                                       prev[`competitor${i + 1}`];
                                   }
-                                  newData[
-                                    `competitor${activeCompetitorCount}`
-                                  ] = "";
+                                  newData[`competitor10`] = "";
                                   return newData;
                                 });
                                 setActiveCompetitorCount((prev) => prev - 1);
@@ -1139,8 +1257,18 @@ export default function SPKView({
   }
 
   return (
-    <div className="animate-in fade-in duration-500 space-y-6">
+    <div className="animate-in fade-in duration-500 space-y-6 relative min-h-100">
       <h2 className="text-2xl font-bold mb-8 text-[#1B3A5B]">SPK Management</h2>
+      {isLoading && (
+        <div className="absolute inset-0 bg-white z-50 flex flex-col items-center justify-center space-y-4">
+          <div className="flex flex-col items-center sticky top-1/2 -translate-y-1/2">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1B3A5B]"></div>
+            <p className="text-slate-500 font-medium animate-pulse mt-4">
+              Loading
+            </p>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
         {/* Grup Filter (Search + Month + Sort) */}
         <div className="flex flex-wrap items-center gap-2 flex-1 w-full md:w-auto">
@@ -1206,10 +1334,20 @@ export default function SPKView({
           </select>
         </div>
 
-        {/* Tombol Tambah (Action Utama) */}
+        <button
+          onClick={handleRealTimeRefresh}
+          disabled={isLoading}
+          className="flex items-center justify-center bg-white hover:bg-slate-100 hover:scale-110 text-slate-600 h-12 w-16 rounded-2xl font-bold border border-slate-200 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+          title="Refresh Data"
+        >
+          <RefreshCw
+            size={18}
+            className={`${isLoading ? "animate-spin" : ""}`}
+          />
+        </button>
         <button
           onClick={() => {
-            setEditingId(null); // Pastikan reset edit state kalau mau buat baru
+            resetForm();
             setIsFormOpen(true);
           }}
           className="flex items-center gap-2 bg-[#1B3A5B] text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:scale-105 transition-all w-full md:w-auto justify-center"
@@ -1219,10 +1357,11 @@ export default function SPKView({
       </div>
 
       {/* TABLE SECTION */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full text-left min-w-200">
           <thead className="bg-slate-200 border-b border-slate-100">
             <tr className="text-[10px] sm:text-[11px] font-bold text-slate-800 uppercase tracking-widest">
+              <th className="p-2 sm:p-5 text-center w-10">No</th>
               <th className="p-2 sm:p-5">No. SPK</th>
               <th className="p-2 sm:p-5">Talent</th>
               <th className="p-2 sm:p-5">Brand</th>
@@ -1268,11 +1407,31 @@ export default function SPKView({
                     key={item.id}
                     className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
                   >
+                    <td className="p-2 sm:p-5 text-center font-bold text-slate-800">
+                      {indexOfFirstItem + index + 1}
+                    </td>
                     <td className="p-2 sm:p-5 font-bold text-[#1B3A5B]">
                       {item.spk_number || item.number}
                     </td>
-                    <td className="p-2 sm:p-5 font-semibold">
-                      {item.talent_name || item.talent}
+                    <td className="p-5">
+                      <div className="flex flex-wrap gap-1 max-w-100">
+                        {[
+                          item.talent_name1,
+                          item.talent_name2,
+                          item.talent_name3,
+                          item.talent_name4,
+                          item.talent_name5,
+                        ]
+                          .filter(Boolean)
+                          .map((name, idx) => (
+                            <span
+                              key={idx}
+                              className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md border border-blue-100 whitespace-nowrap"
+                            >
+                              {name}
+                            </span>
+                          ))}
+                      </div>
                     </td>
                     <td className="p-2 sm:p-5 text-slate-500">
                       {item.brand_name || item.brand}

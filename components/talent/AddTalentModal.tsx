@@ -1,3 +1,24 @@
+/**
+ * ============================================
+ * ADD TALENT MODAL - FORM COMPONENT
+ * ============================================
+ * 
+ * Modal untuk menambahkan talent baru atau edit talent yang sudah ada
+ * 
+ * Fitur:
+ * - Dynamic form dengan 15+ fields (text, url, select, date)
+ * - Client-side validation
+ * - Loading state saat submit
+ * - Success/error handling
+ * - Auto-clear form setelah submit
+ * 
+ * Fields:
+ * - Profile: full_name, source, instagram, tiktok, twitter, youtube, etc
+ * - Demographics: jenis_kelamin, umur, agama, domisili
+ * - Status: tier, status, follower
+ * - Metadata: username, hp, email, bank_account
+ */
+
 "use client";
 import React, { useState, useEffect } from "react";
 import { X, User, Share2, Briefcase, Heart } from "lucide-react";
@@ -32,7 +53,7 @@ export default function AddTalentModal({
     tier_ig: "Nano",
     tier_tiktok: "Nano",
     er: "0%",
-    source: "Manual",
+    source: "Artist/Celebrity",
     color: "#1B4D66",
     monthlyImpressions: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     rateCard: "",
@@ -60,6 +81,7 @@ export default function AddTalentModal({
     return "Nano";
   };
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showManual, setShowManual] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -68,7 +90,7 @@ export default function AddTalentModal({
         tier_ig: initialData.tier_ig || initialData.tier || "Nano",
         tier_tiktok: initialData.tier_tiktok || "Nano",
         er: initialData.er || "0%",
-        source: initialData.source || "Manual",
+        source: initialData.source || "Artist/Celebrity",
         domisili: initialData.domisili || "",
         igAccount: initialData.igAccount || "",
         status: initialData.status || "Active",
@@ -81,45 +103,47 @@ export default function AddTalentModal({
     }
   }, [initialData]);
 
-const handleSubmit = async () => {
-  if (!formData.name) return alert("Nama wajib diisi!");
+  const handleSubmit = async () => {
+    if (!formData.name) return alert("Nama wajib diisi!");
 
-  // Ambil username baru dan username lama (bersihkan dari @ dan spasi)
-  const newUsername = formData.igAccount?.replace("@", "").trim();
-  const oldUsername = initialData?.igAccount?.replace("@", "").trim();
+    // Ambil username baru dan username lama (bersihkan dari @ dan spasi)
+    const newUsername = formData.igAccount?.replace("@", "").trim();
+    const oldUsername = initialData?.igAccount?.replace("@", "").trim();
 
-  // CEK: Apakah username-nya berubah? 
-  // Kalau berubah DAN tidak kosong, baru kita nembak API
-  if (newUsername && newUsername !== oldUsername) {
-    setIsSyncing(true);
-    console.log("Username berubah! Nembak API IG untuk:", newUsername);
+    // CEK: Apakah username-nya berubah?
+    // Kalau berubah DAN tidak kosong, baru kita nembak API
+    if (newUsername && newUsername !== oldUsername) {
+      setIsSyncing(true);
+      console.log("Username berubah! Nembak API IG untuk:", newUsername);
 
-    try {
-      const syncRes = await fetch(`/API/instagram?username=${newUsername}&id=${initialData?.id}`);
-      const syncData = await syncRes.json();
+      try {
+        const syncRes = await fetch(
+          `/api/instagram?username=${newUsername}&id=${initialData?.id}`,
+        );
+        const syncData = await syncRes.json();
 
-      if (syncData.success) {
-        const updatedData = {
-          ...formData,
-          igFollowers: syncData.followers,
-          tier_ig: syncData.tier,
-          er: syncData.er,
-        };
-        onSave(updatedData);
-        onClose();
-        return; 
+        if (syncData.success) {
+          const updatedData = {
+            ...formData,
+            igFollowers: syncData.followers,
+            tier_ig: syncData.tier,
+            er: syncData.er,
+          };
+          onSave(updatedData);
+          onClose();
+          return;
+        }
+      } catch (err) {
+        console.error("Gagal sinkronisasi IG:", err);
+      } finally {
+        setIsSyncing(false);
       }
-    } catch (err) {
-      console.error("Gagal sinkronisasi IG:", err);
-    } finally {
-      setIsSyncing(false);
+    } else {
+      // Kalau username-nya SAMA atau KOSONG, langsung save aja tanpa nembak API
+      console.log("Username tidak berubah, langsung save.");
+      onSave(formData);
     }
-  } else {
-    // Kalau username-nya SAMA atau KOSONG, langsung save aja tanpa nembak API
-    console.log("Username tidak berubah, langsung save.");
-    onSave(formData);
-  }
-};
+  };
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-100 p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-[15px] w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
@@ -243,9 +267,16 @@ const handleSubmit = async () => {
                 <select
                   className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
                   value={formData.gender}
-                  onChange={(e) =>
-                    setFormData({ ...formData, gender: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const selectedGender = e.target.value;
+                    setFormData({
+                      ...formData,
+                      gender: selectedGender,
+                      // Jika pilih Laki-laki, otomatis set hijab ke "no"
+                      hijab:
+                        selectedGender === "Laki-laki" ? "no" : formData.hijab,
+                    });
+                  }}
                 >
                   <option value="">Select Gender</option>
                   <option value="Laki-laki">Laki-laki</option>
@@ -258,8 +289,13 @@ const handleSubmit = async () => {
                   Hijab Status
                 </label>
                 <select
-                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
+                  className={`w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white ${
+                    formData.gender === "Laki-laki"
+                      ? "bg-slate-50 cursor-not-allowed opacity-70"
+                      : ""
+                  }`}
                   value={formData.hijab}
+                  disabled={formData.gender === "Laki-laki"} // Lock kalau laki-laki
                   onChange={(e) =>
                     setFormData({ ...formData, hijab: e.target.value })
                   }
@@ -267,6 +303,9 @@ const handleSubmit = async () => {
                   <option value="no">No</option>
                   <option value="yes">Yes</option>
                 </select>
+                {formData.gender === "Laki-laki" && (
+                  <p className="text-[10px] text-slate-400 italic"></p>
+                )}
               </div>
             </div>
           </section>
@@ -311,98 +350,36 @@ const handleSubmit = async () => {
 
           {/* SECTION 3: SOCIAL MEDIA */}
           <section className="space-y-4">
-            <div className="flex items-center gap-2 text-[#1B3A5B] mb-2">
-              <Share2 size={18} className="text-pink-500" />
-              <h4 className="font-bold uppercase text-xs tracking-widest">
-                Social Media & Business
-              </h4>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* INSTAGRAM ACCOUNT + SYNC BUTTON */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  Instagram Account
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={formData.igAccount}
-                    placeholder="@username"
-                    onChange={(e) =>
-                      setFormData({ ...formData, igAccount: e.target.value })
-                    }
-                    className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  />
-                  {/* <button
-                    type="button"
-                    disabled={!formData.igAccount}
-                    className="bg-blue-50 text-blue-600 px-4 rounded-xl text-xs font-bold hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={async () => {
-                      try {
-                        const userOnly = formData.igAccount.replace("@", "");
-                        const res = await fetch(
-                          `/API/Instagram?username=${userOnly}`
-                        );
-                        const data = await res.json();
-
-                        if (data.followers) {
-                          const numFollowers = data.followers;
-
-                          // Kalkulasi Tier Otomatis
-                          let newTier = "Nano";
-                          if (numFollowers >= 1000000) newTier = "Mega";
-                          else if (numFollowers >= 100000) newTier = "Makro";
-                          else if (numFollowers >= 10000) newTier = "Mikro";
-                          else if (numFollowers >= 1000) newTier = "Nano";
-
-                          setFormData({
-                            ...formData,
-                            igFollowers: numFollowers,
-                            tier: newTier,
-                          });
-                          alert(
-                            `Sync Berhasil! Followers: ${numFollowers.toLocaleString()}`
-                          );
-                        } else {
-                          alert(
-                            "Error: " + (data.error || "User tidak ditemukan")
-                          );
-                        }
-                      } catch (err) {
-                        alert("Gagal koneksi ke API");
-                      }
-                    }}
-                  >
-                    Sync
-                  </button> */}
-                </div>
+            <div className="flex items-center justify-between text-[#1B3A5B] mb-2">
+              <div className="flex items-center gap-2">
+                <Share2 size={18} className="text-pink-500" />
+                <h4 className="font-bold uppercase text-xs tracking-widest">
+                  Social Media Accounts
+                </h4>
               </div>
+              {/* TOMBOL OVERRIDE */}
+              <button
+                type="button"
+                onClick={() => setShowManual(!showManual)}
+                className={`text-[10px] font-bold px-3 py-1 rounded-lg border transition-all ${
+                  showManual
+                    ? "bg-orange-50 text-orange-600 border-orange-200"
+                    : "bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600"
+                }`}
+              >
+                {showManual ? "CLOSE MANUAL OVERRIDE" : "MANUAL DATA OVERRIDE"}
+              </button>
+            </div>
 
-              {/* IG FOLLOWERS */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
-                label="IG Followers"
-                type="number"
-                value={formData.igFollowers}
-                placeholder="10000"
-                onChange={(v: string) => {
-                  const val = v === "" ? "" : parseInt(v);
-                  const numForTier = typeof val === "number" ? val : 0;
-
-                  // Gunakan Macro & Micro (pake 'c') biar sinkron sama CSS/styling
-                  let newTier = "Nano";
-                  if (numForTier >= 1000000) newTier = "Mega";
-                  else if (numForTier >= 100000) newTier = "Macro";
-                  else if (numForTier >= 10000) newTier = "Micro";
-                  else if (numForTier >= 1000) newTier = "Nano";
-
-                  setFormData({
-                    ...formData,
-                    igFollowers: val,
-                    tier_ig: newTier,
-                  });
-                }}
+                label="Instagram Account"
+                value={formData.igAccount}
+                placeholder="@username"
+                onChange={(v: string) =>
+                  setFormData({ ...formData, igAccount: v })
+                }
               />
-
               <Input
                 label="TikTok Account"
                 value={formData.tiktokAccount}
@@ -412,23 +389,6 @@ const handleSubmit = async () => {
                 }
               />
               <Input
-                label="TikTok Followers"
-                type="number"
-                value={formData.tiktokFollowers}
-                placeholder="50000"
-                onChange={(v: string) => {
-                  const val = v === "" ? "" : parseInt(v);
-                  const numForTier = typeof val === "number" ? val : 0;
-                  const newTier = calculateTier(numForTier);
-
-                  setFormData({
-                    ...formData,
-                    tiktokFollowers: val,
-                    tier_tiktok: newTier,
-                  });
-                }}
-              />
-              <Input
                 label="YouTube Username"
                 value={formData.youtube_username}
                 placeholder="@channelname"
@@ -436,42 +396,56 @@ const handleSubmit = async () => {
                   setFormData({ ...formData, youtube_username: v })
                 }
               />
-              <Input
-                label="YouTube Subscribers"
-                type="number"
-                placeholder="50000"
-                value={formData.youtube_subscriber}
-                onChange={(v: string) =>
-                  setFormData({
-                    ...formData,
-                    youtube_subscriber: v === "" ? "" : parseInt(v),
-                  })
-                }
-              />
-              <Input
-                label="Contact Person (WA)"
-                value={formData.contactPerson}
-                placeholder="0812..."
-                onChange={(v: string) =>
-                  setFormData({ ...formData, contactPerson: v })
-                }
-              />
-              <Input
-                label="Engagement Rate (ER)"
-                value={formData.er}
-                placeholder="2.5%"
-                onChange={(v: string) => setFormData({ ...formData, er: v })}
-              />
-              <Input
-                label="Category"
-                value={formData.category}
-                placeholder="Beauty / Gaming / Food / Finance / Tech"
-                onChange={(v: string) =>
-                  setFormData({ ...formData, category: v })
-                }
-              />
+            </div>
+
+            {/* BAGIAN YANG DISEMBUNYIKAN (AUTO-DATA) */}
+            {showManual && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-5 bg-orange-50/30 border-2 border-dashed border-orange-100 rounded-2xl animate-in zoom-in-95 duration-300">
+                <Input
+                  label="IG Followers"
+                  type="number"
+                  value={formData.igFollowers}
+                  onChange={(v: string) =>
+                    setFormData({
+                      ...formData,
+                      igFollowers: v === "" ? "" : parseInt(v),
+                    })
+                  }
+                />
+                <Input
+                  label="TikTok Followers"
+                  type="number"
+                  value={formData.tiktokFollowers}
+                  onChange={(v: string) =>
+                    setFormData({
+                      ...formData,
+                      tiktokFollowers: v === "" ? "" : parseInt(v),
+                    })
+                  }
+                />
+                <Input
+                  label="YouTube Subs"
+                  type="number"
+                  value={formData.youtube_subscriber}
+                  onChange={(v: string) =>
+                    setFormData({
+                      ...formData,
+                      youtube_subscriber: v === "" ? "" : parseInt(v),
+                    })
+                  }
+                />
+                <Input
+                  label="Engagement Rate"
+                  value={formData.er}
+                  placeholder="0.00%"
+                  onChange={(v: string) => setFormData({ ...formData, er: v })}
+                />
+              </div>
+            )}
+            {/* LANJUTAN SECTION 3: STATUS & SOURCE */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-50">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                   Status Talent
                 </label>
                 <select
@@ -479,14 +453,13 @@ const handleSubmit = async () => {
                   onChange={(e) =>
                     setFormData({ ...formData, status: e.target.value })
                   }
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 text-sm focus:border-[#1B3A5B] outline-none bg-white shadow-sm transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#1B3A5B]/10 outline-none bg-white shadow-sm transition-all"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
               <Select
                 label="Source"
                 value={formData.source}
@@ -501,15 +474,24 @@ const handleSubmit = async () => {
                   setFormData({ ...formData, source: v })
                 }
               />
-              {/* TAMPILAN TIER OTOMATIS (READ ONLY) */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  Calculated Tier
-                </label>
-                <div className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-[#1B3A5B]">
-                  {formData.tier_ig}
-                </div>
-              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Contact Person (WA)"
+                value={formData.contactPerson}
+                placeholder="0812..."
+                onChange={(v: string) =>
+                  setFormData({ ...formData, contactPerson: v })
+                }
+              />
+              <Input
+                label="Category"
+                value={formData.category}
+                placeholder="Beauty / Gaming / etc"
+                onChange={(v: string) =>
+                  setFormData({ ...formData, category: v })
+                }
+              />
             </div>
           </section>
         </div>

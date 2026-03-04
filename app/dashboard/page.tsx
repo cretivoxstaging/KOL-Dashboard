@@ -3,10 +3,10 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardView from "../../components/DashboardView";
-import TalentView from "../../components/TalentView";
-import AddTalentModal from "../../components/AddTalentModal";
 import TaxCalculatorView from "../../components/TaxCalculatorView";
-import SPKview from "@/components/SPKview";
+import SPKview from "@/components/spk/SPKView";
+import TalentView from "@/components/talent/TalentView";
+import AddTalentModal from "@/components/talent/AddTalentModal";
 import Sidebar from "./Sidebar";
 import { useTalentData } from "./useTalentData";
 

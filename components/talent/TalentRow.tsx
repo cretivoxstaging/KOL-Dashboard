@@ -1,3 +1,25 @@
+/**
+ * ============================================
+ * TALENT ROW - TABLE ROW COMPONENT
+ * ============================================
+ * 
+ * Component untuk setiap baris data talent di tabel
+ * 
+ * Fitur:
+ * - Render 15+ kolom data dengan format yang sesuai
+ * - Action buttons: Edit, Delete, Detail
+ * - Truncate text panjang dengan tooltip
+ * - External links untuk social media
+ * - Tier badge dengan color-coding (Gold/Silver/Bronze)
+ * - Status badge (Active/Inactive dengan warna berbeda)
+ * 
+ * Props:
+ * - talent: Talent data object
+ * - handleOpenEdit: Handler untuk edit action
+ * - deleteRecord: Handler untuk delete action
+ * - handleShowDetail: Handler untuk detail view
+ */
+
 import React, { useEffect, useState } from "react";
 import {
   Eye,
@@ -7,7 +29,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { Talent, getSourceStyle } from "../types";
+import { Talent, getSourceStyle } from "../../types";
 
 interface TalentRowProps {
   t: Talent;
@@ -45,16 +67,15 @@ const TalentRow: React.FC<TalentRowProps> = ({
 
       if (t.igAccount && t.igAccount !== "-") {
         const igUser = t.igAccount.replace("@", "").trim();
-        syncTasks.push(
-          fetch(
-            `/api/instagram?username=${igUser}&id=${t.id}&last_update=${t.last_update || ""}`,
-          ),
-        );
+        // PAKSA URL pake lowercase dan tambahin base URL biar gak nyasar
+        const igUrl = `/api/instagram?username=${encodeURIComponent(igUser)}&id=${t.id}`;
+        syncTasks.push(fetch(igUrl));
       }
 
       if (t.tiktokAccount && t.tiktokAccount !== "-") {
         const ttUser = t.tiktokAccount.replace("@", "").trim();
-        syncTasks.push(fetch(`/api/tiktok?username=${ttUser}&id=${t.id}`));
+        const ttUrl = `/api/tiktok?username=${encodeURIComponent(ttUser)}&id=${t.id}`;
+        syncTasks.push(fetch(ttUrl));
       }
 
       console.log(`[Sync] Menjalankan ${syncTasks.length} task sync...`);
@@ -86,7 +107,7 @@ const TalentRow: React.FC<TalentRowProps> = ({
         try {
           const username = t.igAccount.replace("@", "");
           await fetch(
-            `/API/instagram?username=${username}&id=${t.id}&last_update=${t.last_update || ""}`,
+            `/api/instagram?username=${username}&id=${t.id}&last_update=${t.last_update || ""}`,
           );
         } catch (err) {
           console.error("Auto-sync failed for", t.name, err);

@@ -1,3 +1,29 @@
+/**
+ * ============================================
+ * FILTER SELECT - REUSABLE FILTER COMPONENT
+ * ============================================
+ * 
+ * Dropdown select component yang reusable untuk filtering
+ * 
+ * Fitur:
+ * - Controlled component (value dan onChange dari parent)
+ * - Custom styling dengan border dan padding
+ * - Support "All" option sebagai default
+ * - Dynamic options array
+ * 
+ * Props:
+ * - label: Label text di samping dropdown
+ * - value: Selected value (controlled)
+ * - onChange: Handler untuk value change
+ * - options: Array of option values untuk dropdown
+ * 
+ * Dipakai untuk filter:
+ * - Source (Instagram, TikTok, YouTube, etc)
+ * - Tier (Gold, Silver, Bronze)
+ * - Religion (Islam, Kristen, Katolik, Hindu, Buddha)
+ * - Status (Active, Inactive)
+ */
+
 import React from "react";
 
 interface FilterSelectProps {

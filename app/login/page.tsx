@@ -26,7 +26,7 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     const checkLockout = async () => {
       try {
-        const res = await fetch("/api/Login", {
+        const res = await fetch("/api/login/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
@@ -66,7 +66,7 @@ const LoginPage: React.FC = () => {
 
     try {
       // Kirim ke endpoint lokal /api/login
-      const res = await fetch("/api/Login", {
+      const res = await fetch("/api/login/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: email, password }),

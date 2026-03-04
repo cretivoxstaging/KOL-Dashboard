@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     
     // Kita ambil sebagai TEXT dulu, jangan langsung .json()
     const rawText = await res.text(); 
+    console.log("ISI HTML YANG BIKIN ERROR:", rawText.substring(0, 300));
     
     let data;
     try {

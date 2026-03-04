@@ -38,7 +38,7 @@ const FilterSelect: React.FC<FilterSelectProps> = ({ value, onChange, options, p
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="text-xs font-bold text-slate-700 outline-none bg-transparent cursor-pointer"
+      className="text-xs font-bold text-black outline-none bg-white cursor-pointer"
     >
       <option value="All">{placeholder}</option>
       {options.map((opt) => (

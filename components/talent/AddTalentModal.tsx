@@ -179,19 +179,12 @@ useEffect(() => {
                 placeholder="Ahmad..."
                 onChange={(v: string) => setFormData({ ...formData, name: v })}
               />
-              {/* <Input
-                label="Age"
-                type="number"
-                value={formData.umur}
-                placeholder="20"
-                onChange={(v: string) => setFormData({ ...formData, umur: v })}
-              /> */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase">
                   Zodiac
                 </label>
                 <select
-                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
+                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white text-black"
                   value={formData.zodiac}
                   onChange={(e) =>
                     setFormData({ ...formData, zodiac: e.target.value })
@@ -229,7 +222,7 @@ useEffect(() => {
                   Religion
                 </label>
                 <select
-                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
+                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white text-black"
                   value={formData.agama}
                   onChange={(e) =>
                     setFormData({ ...formData, agama: e.target.value })
@@ -265,7 +258,7 @@ useEffect(() => {
                   Gender
                 </label>
                 <select
-                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white"
+                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white text-black"
                   value={formData.gender}
                   onChange={(e) => {
                     const selectedGender = e.target.value;
@@ -289,7 +282,7 @@ useEffect(() => {
                   Hijab Status
                 </label>
                 <select
-                  className={`w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white ${
+                  className={`w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white text-black ${
                     formData.gender === "Laki-laki"
                       ? "bg-slate-50 cursor-not-allowed opacity-70"
                       : ""
@@ -453,7 +446,7 @@ useEffect(() => {
                   onChange={(e) =>
                     setFormData({ ...formData, status: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#1B3A5B]/10 outline-none bg-white shadow-sm transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#1B3A5B]/10 outline-none bg-white shadow-sm transition-all text-black"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
@@ -543,7 +536,7 @@ function Input({ label, type = "text", placeholder, value, onChange }: any) {
         placeholder={placeholder}
         value={displayValue}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-black bg-white"
       />
     </div>
   );
@@ -561,7 +554,7 @@ function Select({ label, options, value, onChange }: any) {
       <select
         value={safeValue}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm outline-none bg-white"
+        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm outline-none bg-white text-black"
       >
         {/* Tambahin option kosong/default jika perlu */}
         {options.map((opt: string) => (

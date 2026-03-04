@@ -72,7 +72,7 @@ function InputGroup({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all placeholder:text-slate-300 bg-white"
+        className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all placeholder:text-slate-300 bg-white text-black"
       />
     </div>
   );
@@ -166,7 +166,7 @@ export default function SPKForm({
                   name="vendor_address"
                   value={formData.vendor_address}
                   onChange={onChange}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none text-black bg-white"
                   rows={2}
                 />
               </div>
@@ -228,7 +228,7 @@ export default function SPKForm({
                     name="campaign_start"
                     value={formData.campaign_start}
                     onChange={onChange}
-                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none bg-white"
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none bg-white text-black"
                   />
                 </div>
                 <div className="flex flex-col w-full">
@@ -240,7 +240,7 @@ export default function SPKForm({
                     name="campaign_end"
                     value={formData.campaign_end}
                     onChange={onChange}
-                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none bg-white"
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none bg-white text-black"
                   />
                 </div>
               </div>
@@ -252,7 +252,7 @@ export default function SPKForm({
                   name="collab_nature"
                   value={formData.collab_nature}
                   onChange={onChange}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none bg-white"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none bg-white text-black"
                 >
                   <option value="Eksklusif">Eksklusif</option>
                   <option value="Non-Eksklusif">Non-Eksklusif</option>
@@ -437,7 +437,7 @@ export default function SPKForm({
                         value={formData[`competitor${num}`] || ""}
                         onChange={onChange}
                         placeholder={`Komp. ${num}`}
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-[#007AFF]/20 bg-white transition-all shadow-sm"
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-[#007AFF]/20 bg-white transition-all shadow-sm text-black"
                       />
 
                       {activeCompetitorCount > 1 && (
@@ -527,7 +527,7 @@ export default function SPKForm({
                   }
                   onChange={onChange}
                   placeholder="0"
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all font-bold text-[#1B3A5B]"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all font-bold text-[#1B3A5B] bg-white"
                 />
               </div>
             </div>

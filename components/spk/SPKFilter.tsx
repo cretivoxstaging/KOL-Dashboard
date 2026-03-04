@@ -76,7 +76,7 @@ export default function SPKFilter({
             placeholder="Search talent or brand..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-11 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all shadow-sm"
+            className="w-full pl-11 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all shadow-sm text-black"
           />
         </div>
 
@@ -86,7 +86,7 @@ export default function SPKFilter({
         <select
           value={selectedYear}
           onChange={(e) => onYearChange(e.target.value)}
-          className="px-4 h-11 border font-bold border-slate-200 rounded-2xl bg-white text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer text-[#1B3A5B]"
+          className="px-4 h-11 border font-bold border-slate-200 rounded-2xl bg-white text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer text-black"
         >
           <option value="all">All Year</option>
           {availableYears.map((year) => (
@@ -102,7 +102,7 @@ export default function SPKFilter({
         <select
           value={selectedMonth}
           onChange={(e) => onMonthChange(e.target.value)}
-          className="px-4 h-11 border font-bold border-slate-200 rounded-2xl bg-white text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer"
+          className="px-4 h-11 border font-bold border-slate-200 rounded-2xl bg-white text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer text-black"
         >
           <option value="all">All Month</option>
           <option value="01">January</option>

@@ -2,9 +2,9 @@
  * ============================================
  * TALENT ROW - TABLE ROW COMPONENT
  * ============================================
- * 
+ *
  * Component untuk setiap baris data talent di tabel
- * 
+ *
  * Fitur:
  * - Render 15+ kolom data dengan format yang sesuai
  * - Action buttons: Edit, Delete, Detail
@@ -12,7 +12,7 @@
  * - External links untuk social media
  * - Tier badge dengan color-coding (Gold/Silver/Bronze)
  * - Status badge (Active/Inactive dengan warna berbeda)
- * 
+ *
  * Props:
  * - talent: Talent data object
  * - handleOpenEdit: Handler untuk edit action
@@ -38,6 +38,7 @@ interface TalentRowProps {
   onDetailClick: (t: Talent) => void;
   onUpdate: (t: Talent) => void;
   setTalentToDelete: (t: Talent) => void;
+  isLastTwo?: boolean;
 }
 
 const TalentRow: React.FC<TalentRowProps> = ({
@@ -47,6 +48,7 @@ const TalentRow: React.FC<TalentRowProps> = ({
   onDetailClick,
   onUpdate,
   setTalentToDelete,
+  isLastTwo,
 }) => {
   const [openDropdown, setOpenDropdown] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -194,7 +196,13 @@ const TalentRow: React.FC<TalentRowProps> = ({
                 onClick={() => setOpenDropdown(false)}
               ></div>
 
-              <div className="absolute top-full mt-2 right-0 w-40 bg-white border border-slate-100 rounded-xl shadow-xl z-20 py-2 animate-in fade-in zoom-in duration-200">
+              <div
+                className={`absolute right-0 w-40 bg-white border border-slate-100 rounded-xl shadow-xl z-20 py-2 animate-in fade-in zoom-in duration-200 ${
+                  isLastTwo
+                    ? "bottom-full mb-2 origin-bottom-right"
+                    : "top-full mt-2 origin-top-right"
+                }`}
+              >
                 <button
                   onClick={() => {
                     onDetailClick(t);

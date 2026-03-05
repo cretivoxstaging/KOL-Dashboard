@@ -286,9 +286,9 @@ export default function TalentView({
 
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-500">
-      <h2 className="text-2xl font-bold mb-8 text-[#1B3A5B]">
-        Talent Management
-      </h2>
+            <h1 className="text-2xl font-bold mb-6 text-slate-800">
+        Influencer Management
+      </h1>
 
       {/* TOOLBAR SECTION */}
       <div className="mb-2">
@@ -315,7 +315,6 @@ export default function TalentView({
               options={[
                 "Artist/Celebrity",
                 "Influencer/KOL",
-                "Talent",
                 "Media",
                 "Clippers",
               ]}
@@ -472,6 +471,8 @@ export default function TalentView({
                     onUpdate(talent);
                   }}
                   setTalentToDelete={setTalentToDelete} // Kirim fungsi delete-nya
+                  isLastTwo={index >= currentItems.length - 2}
+                  
                 />
               ))
             ) : (

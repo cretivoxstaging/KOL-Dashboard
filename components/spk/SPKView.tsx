@@ -118,9 +118,20 @@ export default function SPKView({
 
   // === UI State ===
   const [openActionId, setOpenActionId] = useState<string | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("spk_form_open") === "true";
+    }
+    return false;
+  });
   const [isLoading, setIsLoading] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | number | null>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("spk_editing_id");
+      return saved || null;
+    }
+    return null;
+  });
 
   // === Filter & Pagination State ===
   const [searchQuery, setSearchQuery] = useState("");
@@ -145,6 +156,9 @@ export default function SPKView({
     item: null,
   });
   const [confirmText, setConfirmText] = useState("");
+
+  // === Exit Confirmation Modal State ===
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // === Form Data State ===
   const initialSows = generateInitialSows();
@@ -206,8 +220,19 @@ export default function SPKView({
    * Digunakan saat:
    * - Menutup form
    * - Membuka form create baru (agar data edit tidak nyangkut)
+   * 
+   * Cleaned up localStorage keys:
+   * - spk_form_draft: Simpan formData
+   * - spk_editing_id: Simpan ID yang sedang diedit
+   * - spk_active_talent/sow/comp: Simpan counter
    */
   const resetForm = () => {
+    localStorage.removeItem("spk_form_draft");
+  localStorage.removeItem("spk_editing_id");
+  localStorage.removeItem("spk_active_talent");
+  localStorage.removeItem("spk_active_sow");
+  localStorage.removeItem("spk_active_comp");
+  localStorage.removeItem("spk_form_open");
     setEditingId(null);
     setFormData({
       first_party_signer: "",
@@ -245,9 +270,58 @@ export default function SPKView({
     setSowIds([Date.now()]);
   };
 
+/**
+ * ============================================
+ * HYDRATION SYSTEM (AUTO-LOAD DRAFT)
+ * ============================================
+ * Saat component pertama kali mount, cek apakah ada draft di localStorage
+ * Jika ada, restore formData, counters, dan editingId
+ * Jalankan hanya 1x saat component mount
+ */
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  const savedDraft = localStorage.getItem("spk_form_draft");
+  const savedEditingId = localStorage.getItem("spk_editing_id");
+
+  if (savedDraft) {
+    try {
+      const parsed = JSON.parse(savedDraft);
+      if (Object.keys(parsed).length > 0) {
+        console.log("✓ Draft ditemukan, melakukan restore...");
+        
+        // Restore formData
+        setFormData(parsed);
+        
+        // Restore counters
+        const talentCount = localStorage.getItem("spk_active_talent");
+        const sowCount = localStorage.getItem("spk_active_sow");
+        const competitorCount = localStorage.getItem("spk_active_comp");
+        
+        if (talentCount) setActiveTalentCount(Number(talentCount));
+        if (sowCount) setActiveSowCount(Number(sowCount));
+        if (competitorCount) setActiveCompetitorCount(Number(competitorCount));
+        
+        // Restore editingId jika ada (keep as string untuk nomor SPK)
+        if (savedEditingId) {
+          setEditingId(savedEditingId);
+        }
+        
+        // Buka form otomatis
+        setIsFormOpen(true);
+        
+        console.log("✓ Draft berhasil di-restore: form terbuka kembali");
+      }
+    } catch (error) {
+      console.error("Failed to parse draft:", error);
+    }
+  }
+}, []); // Jalankan sekali saat mount
+
   /**
    * handleChange - Handle input change untuk semua field
    * Special handling untuk field uang (remove non-digits)
+   * Note: Auto-save to localStorage dilakukan di useEffect terpisah
    */
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -376,7 +450,11 @@ export default function SPKView({
    * 4. Set form open
    */
   const handleOpenEdit = (item: any) => {
-    setEditingId(item.spk_number || item.number);
+const idToEdit = item.spk_number || item.number;
+  setEditingId(idToEdit);
+
+  localStorage.setItem("spk_editing_id", idToEdit.toString());
+  localStorage.setItem("spk_form_open", "true");
 
     // ===== STEP 1: Parse Campaign Period =====
     const period = item.campaign_period || "";
@@ -538,8 +616,7 @@ export default function SPKView({
 
       // ===== STEP 3: Collab Nature Text =====
       const eksklusifText = `Eksklusif`;
-      const nonEksklusifText =
-        "Non Eksklusif"
+      const nonEksklusifText = "Non Eksklusif";
       // ===== STEP 4: Build Payload =====
       const payload: any = {
         // Section I: Company Identity
@@ -650,6 +727,43 @@ export default function SPKView({
       setIsLoading(false);
     }
   };
+  /**
+   * ============================================
+   * PERSISTENCE SYSTEM (AUTO-SAVE DRAFT)
+   * ============================================
+   * Setiap kali formData atau counters berubah, simpan ke localStorage
+   * Key: 'spk_form_draft' untuk formData
+   * Dilakukan dengan debounce 500ms untuk performance
+   */
+  useEffect(() => {
+    if (!isFormOpen) return; // Jangan save jika form tidak terbuka
+
+    const timeoutId = setTimeout(() => {
+      if (typeof window !== "undefined") {
+        try {
+          // Save formData
+          localStorage.setItem("spk_form_draft", JSON.stringify(formData));
+          
+          // Save counters
+          localStorage.setItem("spk_active_talent", activeTalentCount.toString());
+          localStorage.setItem("spk_active_sow", activeSowCount.toString());
+          localStorage.setItem("spk_active_comp", activeCompetitorCount.toString());
+          
+          // Save editingId
+          if (editingId) {
+            localStorage.setItem("spk_editing_id", editingId.toString());
+          }
+          
+          console.log("✓ Draft tersimpan otomatis ke localStorage");
+        } catch (error) {
+          console.error("Failed to save draft:", error);
+        }
+      }
+    }, 500); // Debounce 500ms
+
+    // Cleanup: clear timeout jika component unmount atau deps berubah
+    return () => clearTimeout(timeoutId);
+  }, [formData, activeTalentCount, activeSowCount, activeCompetitorCount, editingId, isFormOpen]);
 
   /**
    * ============================================
@@ -741,22 +855,33 @@ export default function SPKView({
   if (isFormOpen) {
     return (
       <div className="animate-in slide-in-from-right duration-500 pb-20">
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => {
-              setIsFormOpen(false);
-              resetForm();
-            }}
-            className="p-2 hover:bg-slate-100 rounded-full transition-all"
-            title="Back to list"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <h2 className="text-2xl font-bold text-[#1B3A5B]">
-            {editingId ? `Edit SPK ${editingId}` : "Buat SPK Baru"}
-          </h2>
+        {/* ============================================ */}
+        {/* FORM HEADER */}
+        {/* ============================================ */}
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowExitModal(true)}
+              className="p-2 hover:bg-slate-100 rounded-full transition-all"
+              title="Back to list"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <div>
+              <h2 className="text-2xl font-bold text-[#1B3A5B]">
+                {editingId ? `Edit SPK - ${editingId}` : "Buat SPK Baru"}
+              </h2>
+              {/* UI Feedback: Draft tersimpan otomatis */}
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                ✓ Draft tersimpan otomatis
+              </p>
+            </div>
+          </div>
         </div>
 
+        {/* ============================================ */}
+        {/* FORM COMPONENT */}
+        {/* ============================================ */}
         <SPKForm
           formData={formData}
           onChange={handleChange}
@@ -772,6 +897,56 @@ export default function SPKView({
           activeCompetitorCount={activeCompetitorCount}
           setActiveCompetitorCount={setActiveCompetitorCount}
         />
+
+        {/* ============================================ */}
+        {/* EXIT CONFIRMATION MODAL */}
+        {/* ============================================ */}
+        {showExitModal && (
+          <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+            {/* Modal Container */}
+            <div className="bg-white rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+              <div className="p-8 space-y-6">
+                {/* Modal Header */}
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-amber-50 rounded-2xl">
+                    <ChevronLeft size={24} className="text-amber-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#1B3A5B]">
+                    Keluar dari Form?
+                  </h3>
+                </div>
+
+                {/* Warning Message */}
+                <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl">
+                  <p className="text-amber-800 text-sm leading-relaxed">
+                    Draft yang belum disimpan akan dihapus secara permanen. 
+                    Pastikan Anda sudah menyimpan perubahan sebelum keluar.
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowExitModal(false)}
+                    className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all"
+                  >
+                    Tetap di Sini
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowExitModal(false);
+                      setIsFormOpen(false);
+                      resetForm();
+                    }}
+                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all"
+                  >
+                    Ya, Keluar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

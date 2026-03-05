@@ -20,11 +20,18 @@ interface SidebarProps {
   setIsSidebarCollapsed: (collapsed: boolean) => void;
 }
 
+// Sub-komponen untuk item menu agar rapi
 function SidebarItem({ icon, label, active, collapsed, onClick }: any) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${active ? "bg-[#007AFF] hover:bg-[#007AFF]/80 text-white shadow-lg" : "text-slate-800 hover:bg-slate-200"} ${collapsed ? "justify-center" : ""}`}
+      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group 
+        ${
+          active
+            ? "bg-[#007AFF] text-white shadow-lg"
+            : "text-slate-800 hover:bg-slate-200"
+        } 
+        ${collapsed ? "justify-center" : ""}`}
       title={collapsed ? label : ""}
     >
       <div className="shrink-0">{icon}</div>
@@ -51,14 +58,17 @@ const Sidebar: React.FC<SidebarProps> = ({
       Cookies.remove("auth_token");
       router.push("/login");
     } catch (error) {
-      // Optional: handle error (e.g., show notification)
       router.push("/login");
     }
   };
+
   return (
     <aside
-      className={`fixed lg:static inset-y-0 left-0 z-50 bg-white border-r border-gray-200 shadow-xl flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${isSidebarCollapsed ? "w-20" : "w-64"}`}
+      className={`fixed lg:static inset-y-0 left-0 z-50 bg-white border-r border-gray-200 shadow-xl flex flex-col transition-all duration-300 ease-in-out 
+        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} 
+        ${isSidebarCollapsed ? "w-20" : "w-64"}`}
     >
+      {/* HEADER SIDEBAR */}
       <div
         className={`flex items-center mb-10 text-[#1B3A5B] p-6 ${isSidebarCollapsed ? "justify-center" : "justify-between"}`}
       >
@@ -73,14 +83,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           <Menu size={20} />
         </button>
-        <button
-          onClick={() => setIsSidebarOpen(true)}
-          className="p-2 hover:bg-slate-100 rounded-lg transition-colors lg:hidden ml-auto"
-          aria-label="Open menu"
-        >
-          <Menu size={24} />
-        </button>
       </div>
+
+      {/* NAVIGATION MENU */}
       <nav className="flex-1 space-y-2 px-4 ">
         <SidebarItem
           icon={<LayoutDashboard size={20} />}
@@ -89,20 +94,23 @@ const Sidebar: React.FC<SidebarProps> = ({
           collapsed={isSidebarCollapsed}
           onClick={() => setActiveTab("dashboard")}
         />
+
+        <SidebarItem
+          icon={<Users size={20} />}
+          label="Influencer List"
+          active={activeTab === "influencer"}
+          collapsed={isSidebarCollapsed}
+          onClick={() => setActiveTab("influencer")}
+        />
+
         <SidebarItem
           icon={<Users size={20} />}
           label="Talent List"
-          active={activeTab === "talent"}
+          active={activeTab === "talent-list"}
           collapsed={isSidebarCollapsed}
-          onClick={() => setActiveTab("talent")}
+          onClick={() => setActiveTab("talent-list")}
         />
-        <SidebarItem
-          icon={<Calculator size={20} />}
-          label="Tax Calculator"
-          active={activeTab === "tax"}
-          collapsed={isSidebarCollapsed}
-          onClick={() => setActiveTab("tax")}
-        />
+
         <SidebarItem
           icon={<FileText size={20} />}
           label="SPK"
@@ -110,11 +118,22 @@ const Sidebar: React.FC<SidebarProps> = ({
           collapsed={isSidebarCollapsed}
           onClick={() => setActiveTab("SPK")}
         />
+
+        <SidebarItem
+          icon={<Calculator size={20} />}
+          label="Tax Calculator"
+          active={activeTab === "tax"}
+          collapsed={isSidebarCollapsed}
+          onClick={() => setActiveTab("tax")}
+        />
       </nav>
+
+      {/* LOGOUT BUTTON */}
       <div className="p-4 mt-auto">
         <button
           onClick={handleLogout}
-          className={`flex items-center gap-3 bg-[#007AFF] text-white shadow-lg hover:bg-[#007AFF]/80 transition-all rounded-[9px] h-12 font-bold text-sm ${isSidebarCollapsed ? "justify-center w-12" : "w-full px-4"}`}
+          className={`flex items-center gap-3 bg-[#007AFF] text-white shadow-lg hover:bg-[#007AFF]/80 transition-all rounded-[9px] h-12 font-bold text-sm 
+            ${isSidebarCollapsed ? "justify-center w-12" : "w-full px-4"}`}
         >
           <LogOut size={18} />
           {!isSidebarCollapsed && <span>Log Out</span>}

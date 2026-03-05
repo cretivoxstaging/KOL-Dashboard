@@ -2,7 +2,7 @@
  * ============================================
  * SPK FORM COMPONENT
  * ============================================
- * 
+ *
  * Komponen form besar untuk create/edit SPK
  * Terdiri dari beberapa section:
  * - Section I: Company Identity (Penandatangan Perusahaan)
@@ -12,12 +12,12 @@
  * - Section V: Competitors (Daftar Kompetitor)
  * - Section VI: Payment & Bank (Pembayaran & Rekening Bank)
  * - Tax Calculator (Iframe eksternal)
- * 
+ *
  * Props mengontrol semua state dan handler dari parent (SPKView)
  */
 
 "use client";
-import React from "react";
+import React, { useDeferredValue } from "react";
 import {
   Plus,
   Trash2,
@@ -28,13 +28,14 @@ import {
   Banknote,
 } from "lucide-react";
 import { GiStrong } from "react-icons/gi";
+import { generateHTML } from "@/src/utils/spkTemplate";
 
 interface SPKFormProps {
   formData: any; // FormDataType dari parent
   onChange: (e: any) => void;
   onSubmit: (e: React.FormEvent) => void;
   isLoading: boolean;
-  editingId: number | null;
+  editingId: string | number | null;
   activeTalentCount: number;
   setActiveTalentCount: (count: number | ((prev: number) => number)) => void;
   activeSowCount: number;
@@ -43,7 +44,7 @@ interface SPKFormProps {
   onRemoveSow: (index: number) => void;
   activeCompetitorCount: number;
   setActiveCompetitorCount: (
-    count: number | ((prev: number) => number)
+    count: number | ((prev: number) => number),
   ) => void;
 }
 
@@ -99,13 +100,16 @@ export default function SPKForm({
   setActiveCompetitorCount,
 }: SPKFormProps) {
   const EXTERNAL_CALCULATOR_URL = "https://tax-kol-calculator.vercel.app/";
+  
+  // Performance optimization: defer preview rendering to avoid input lag
+  const deferredFormData = useDeferredValue(formData);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div className="col-span-1 lg:col-span-7 space-y-6">
         <form
           onSubmit={onSubmit}
-          className="bg-white p-4 sm:p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8"
+          className="bg-white p-4  sm:p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8"
         >
           {/* ============================================ */}
           {/* SECTION I: COMPANY IDENTITY */}
@@ -122,14 +126,14 @@ export default function SPKForm({
                 name="first_party_signer"
                 value={formData.first_party_signer}
                 onChange={onChange}
-                placeholder="Bryan Josep..."
+                placeholder="Andi Pratama"
               />
               <InputGroup
                 label="Jabatan Penandatangan"
                 name="first_party_position"
                 value={formData.first_party_position}
                 onChange={onChange}
-                placeholder="Creative Director"
+                placeholder="Director"
               />
             </div>
           </section>
@@ -149,14 +153,14 @@ export default function SPKForm({
                 name="vendor_name"
                 value={formData.vendor_name}
                 onChange={onChange}
-                placeholder="Nama Lengkap"
+                placeholder="Rafifata"
               />
               <InputGroup
                 label="NIK"
                 name="vendor_nik"
                 value={formData.vendor_nik}
                 onChange={onChange}
-                placeholder="Nomor Induk Kependudukan"
+                placeholder="3201290..."
               />
               <div className="col-span-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
@@ -175,14 +179,14 @@ export default function SPKForm({
                 name="vendor_role"
                 value={formData.vendor_role}
                 onChange={onChange}
-                placeholder="Contoh: Influencer"
+                placeholder="Influencer"
               />
               <InputGroup
                 label="Nama Perusahaan Vendor"
                 name="vendor_company_name"
                 value={formData.vendor_company_name}
                 onChange={onChange}
-                placeholder="Contoh: Andi Studio"
+                placeholder="Andi Studio"
               />
             </div>
           </section>
@@ -202,7 +206,7 @@ export default function SPKForm({
                 name="brand_name"
                 value={formData.brand_name}
                 onChange={onChange}
-                placeholder="Nama Brand"
+                placeholder="Nestle"
               />
               <InputGroup
                 label="Jenis Perusahaan"
@@ -216,7 +220,7 @@ export default function SPKForm({
                 name="collab_type"
                 value={formData.collab_type}
                 onChange={onChange}
-                placeholder="Contoh: Campaign Digital"
+                placeholder="Campaign Digital"
               />
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col w-full">
@@ -313,14 +317,13 @@ export default function SPKForm({
                     </div>
                   );
                 })}
-
                 {activeTalentCount < 5 && (
                   <button
                     type="button"
                     onClick={() => setActiveTalentCount((prev) => prev + 1)}
-                    className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-2 text-slate-400 hover:border-[#007AFF] hover:text-[#007AFF] hover:bg-blue-50 transition-all font-bold text-xs"
+                    className="flex items-center justify-center gap-2 my-6 border-2 border-dashed border-slate-200 rounded-xl h-11.25 text-slate-400 hover:border-[#007AFF] hover:text-[#007AFF] hover:bg-blue-50 transition-all font-bold text-sm"
                   >
-                    <Plus size={14} />
+                    <Plus size={16} />
                   </button>
                 )}
               </div>
@@ -424,50 +427,46 @@ export default function SPKForm({
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {Array.from({ length: activeCompetitorCount }).map(
-                (_, index) => {
-                  const num = index + 1;
-                  return (
-                    <div
-                      key={`comp-wrapper-${num}`}
-                      className="relative group animate-in zoom-in-95 duration-200"
-                    >
-                      <input
-                        name={`competitor${num}`}
-                        value={formData[`competitor${num}`] || ""}
-                        onChange={onChange}
-                        placeholder={`Komp. ${num}`}
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-[#007AFF]/20 bg-white transition-all shadow-sm text-black"
-                      />
+              {Array.from({ length: activeCompetitorCount }).map((_, index) => {
+                const num = index + 1;
+                return (
+                  <div
+                    key={`comp-wrapper-${num}`}
+                    className="relative group animate-in zoom-in-95 duration-200"
+                  >
+                    <input
+                      name={`competitor${num}`}
+                      value={formData[`competitor${num}`] || ""}
+                      onChange={onChange}
+                      placeholder={`Komp. ${num}`}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-[#007AFF]/20 bg-white transition-all shadow-sm text-black"
+                    />
 
-                      {activeCompetitorCount > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newData = { ...formData };
-                            for (let i = num; i < 10; i++) {
-                              newData[`competitor${i}`] =
-                                formData[`competitor${i + 1}`];
-                            }
-                            newData[`competitor10`] = "";
-                            setActiveCompetitorCount((prev) => prev - 1);
-                          }}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 z-10"
-                        >
-                          <Trash2 size={10} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                }
-              )}
+                    {activeCompetitorCount > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newData = { ...formData };
+                          for (let i = num; i < 10; i++) {
+                            newData[`competitor${i}`] =
+                              formData[`competitor${i + 1}`];
+                          }
+                          newData[`competitor10`] = "";
+                          setActiveCompetitorCount((prev) => prev - 1);
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 z-10"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
 
               {activeCompetitorCount < 10 && (
                 <button
                   type="button"
-                  onClick={() =>
-                    setActiveCompetitorCount((prev) => prev + 1)
-                  }
+                  onClick={() => setActiveCompetitorCount((prev) => prev + 1)}
                   className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 rounded-xl py-2 text-slate-400 hover:border-[#007AFF] hover:text-[#007AFF] hover:bg-white transition-all font-bold text-[10px] uppercase shadow-sm"
                 >
                   <Plus size={14} />
@@ -620,12 +619,47 @@ export default function SPKForm({
         </form>
       </div>
 
-      {/* RIGHT COLUMN: TAX CALCULATOR */}
+      {/* RIGHT COLUMN: SPK DOCUMENT PREVIEW */}
       <div className="col-span-1 lg:col-span-5 relative mt-8 lg:mt-0">
         <div className="lg:sticky lg:top-8 space-y-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-screen w-full">
+          {/* SPK Live Preview */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-700 text-sm">
+                📄 Live Preview - Dokumen SPK
+              </h3>
+              <span className="text-xs text-slate-400 italic">
+                Real-time
+              </span>
+            </div>
+            <div 
+              className="overflow-y-auto rounded-xl border border-slate-200 shadow-lg bg-gray-50"
+              style={{ height: 'calc(100vh - 200px)' }}
+            >
+              <div className="bg-white" style={{ 
+                minHeight: '297mm',
+                aspectRatio: '210 / 297',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                transformOrigin: 'top center'
+              }}>
+                <iframe
+                  srcDoc={generateHTML(deferredFormData)}
+                  className="w-full h-full border-none"
+                  style={{ 
+                    minHeight: '297mm',
+                    display: 'block'
+                  }}
+                  title="SPK Document Preview"
+                  sandbox="allow-same-origin"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Tax Calculator */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col" style={{ height: '400px' }}>
             <h3 className="font-bold text-slate-700 text-sm mb-4">
-              Tax Calculator
+              🧮 Tax Calculator
             </h3>
             <div className="flex-1 overflow-hidden rounded-2xl relative bg-white">
               <iframe

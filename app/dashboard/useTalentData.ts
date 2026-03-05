@@ -37,14 +37,14 @@ export function useTalentData() {
 
   const getInitialTab = () => {
     const t = searchParams.get("tab");
-    if (t === "dashboard" || t === "talent" || t === "tax" || t === "SPK") {
-      return t as "dashboard" | "talent" | "tax" | "SPK";
+    if (t === "dashboard" || t === "talent" || t === "talent-list" || t === "influencer" || t === "tax" || t === "SPK") {
+      return t as "dashboard" | "talent" | "talent-list" | "influencer" | "tax" | "SPK";
     }
     return "dashboard";
   };
 
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "talent" | "tax" | "SPK"
+    "dashboard" | "talent" | "talent-list" | "influencer" | "tax" | "SPK"
   >(getInitialTab());
 
   const getTimestamp = (dateString?: string) => {

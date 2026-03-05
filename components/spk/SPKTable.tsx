@@ -53,7 +53,7 @@ export default function SPKTable({
   const safeItems = items || [];
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-visible">
       <table className="w-full text-left min-w-200">
         {/* ============================================ */}
         {/* TABLE HEADER */}

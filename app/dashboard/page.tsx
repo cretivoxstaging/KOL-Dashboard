@@ -1,18 +1,19 @@
 "use client";
 
 import React, { useEffect, Suspense } from "react";
-import { useRouter } from "next/navigation";
 import DashboardView from "../../components/DashboardView";
 import TaxCalculatorView from "../../components/TaxCalculatorView";
 import SPKview from "@/components/spk/SPKView";
 import TalentView from "@/components/talent/TalentView";
+import TalentTable from "@/components/talent/TalentTable";
+import TalentForm from "@/components/talent/TalentForm";
+import InfluencerTable from "@/components/influencer/InfluencerTable";
+import InfluencerForm from "@/components/influencer/InfluencerForm";
 import AddTalentModal from "@/components/talent/AddTalentModal";
 import Sidebar from "./Sidebar";
 import { useTalentData } from "./useTalentData";
 
 function DashboardContent() {
-  const router = useRouter();
-
   const {
     activeTab,
     setActiveTab,
@@ -110,7 +111,7 @@ function DashboardContent() {
         activeTab={activeTab}
         setActiveTab={(tab: string) => {
           setActiveTab(tab as any);
-          router.push(`?tab=${tab}`, { scroll: false });
+          setIsSidebarOpen(false); // Close sidebar on mobile after tab selection
         }}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
@@ -129,64 +130,117 @@ function DashboardContent() {
           </div>
         ) : (
           <>
-            {activeTab === "dashboard" || activeTab === "talent" ? (
+            {/* Dashboard View */}
+            {activeTab === "dashboard" && (
               <div className="p-3 sm:p-4 md:p-6 lg:p-8">
-                {activeTab === "dashboard" && (
-                  <DashboardView
-                    talents={talents}
-                    impressionData={impressionData}
+                <DashboardView
+                  talents={talents}
+                  impressionData={impressionData}
+                />
+              </div>
+            )}
+
+            {/* Talent List View */}
+            {activeTab === "talent-list" && (
+              <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+                <TalentTable
+                  talents={talents}
+                  isLoading={isLoading}
+                  isModalOpen={isModalOpen}
+                  setIsModalOpen={setIsModalOpen}
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  selectedCategory={selectedCategory}
+                  setSelectedCategory={setSelectedCategory}
+                  talentToEdit={talentToEdit}
+                  setTalentToEdit={setTalentToEdit}
+                  sortBy={sortBy}
+                  setSortBy={setSortBy}
+                  selectedReligion={selectedReligion}
+                  setSelectedReligion={setSelectedReligion}
+                  selectedStatus={selectedStatus}
+                  setSelectedStatus={setSelectedStatus}
+                  selectedTier={selectedTier}
+                  setSelectedTier={setSelectedTier}
+                  selectedAgeRange={selectedAgeRange}
+                  setSelectedAgeRange={setSelectedAgeRange}
+                  selectedSource={selectedSource}
+                  setSelectedSource={setSelectedSource}
+                  filteredAndSortedTalents={filteredAndSortedTalents}
+                  onDelete={handleDeleteTalent}
+                  onUpdate={handleOpenEdit}
+                  onRefresh={handleRefresh}
+                  isSidebarOpen={isSidebarOpen}
+                  isSidebarCollapsed={isSidebarCollapsed}
+                />
+                {isModalOpen && (
+                  <TalentForm
+                    onClose={() => {
+                      setIsModalOpen(false);
+                      setTalentToEdit(null);
+                    }}
+                    onSave={handleSaveTalent}
+                    initialData={talentToEdit}
                   />
                 )}
-                {activeTab === "talent" && (
-                  <>
-                    <TalentView
-                      searchTerm={searchTerm}
-                      setSearchTerm={setSearchTerm}
-                      selectedCategory={selectedCategory}
-                      setSelectedCategory={setSelectedCategory}
-                      filteredTalent={filteredAndSortedTalents}
-                      onAddClick={() => setIsModalOpen(true)}
-                      onDelete={handleDeleteTalent}
-                      onUpdate={handleOpenEdit}
-                      onRefresh={handleRefresh}
-                      isLoading={isLoading}
-                      sortBy={sortBy}
-                      setSortBy={setSortBy}
-                      selectedSource={selectedSource}
-                      setSelectedSource={setSelectedSource}
-                      selectedReligion={selectedReligion}
-                      setSelectedReligion={setSelectedReligion}
-                      selectedStatus={selectedStatus}
-                      setSelectedStatus={setSelectedStatus}
-                      selectedTier={selectedTier}
-                      setSelectedTier={setSelectedTier}
-                      selectedAgeRange={selectedAgeRange}
-                      setSelectedAgeRange={setSelectedAgeRange}
-                      isSidebarOpen={isSidebarOpen}
-                      isSidebarCollapsed={isSidebarCollapsed}
-                    />
-                    {isModalOpen && (
-                      <AddTalentModal
-                        onClose={() => {
-                          setIsModalOpen(false);
-                          setTalentToEdit(null);
-                        }}
-                        onSave={handleSaveTalent}
-                        initialData={talentToEdit}
-                      />
-                    )}
-                  </>
+              </div>
+            )}
+
+            {/* Influencer List View */}
+            {activeTab === "influencer" && (
+              <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+                <InfluencerTable
+                  talents={talents}
+                  isLoading={isLoading}
+                  isModalOpen={isModalOpen}
+                  setIsModalOpen={setIsModalOpen}
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  selectedCategory={selectedCategory}
+                  setSelectedCategory={setSelectedCategory}
+                  talentToEdit={talentToEdit}
+                  setTalentToEdit={setTalentToEdit}
+                  sortBy={sortBy}
+                  setSortBy={setSortBy}
+                  selectedReligion={selectedReligion}
+                  setSelectedReligion={setSelectedReligion}
+                  selectedStatus={selectedStatus}
+                  setSelectedStatus={setSelectedStatus}
+                  selectedTier={selectedTier}
+                  setSelectedTier={setSelectedTier}
+                  selectedAgeRange={selectedAgeRange}
+                  setSelectedAgeRange={setSelectedAgeRange}
+                  selectedSource={selectedSource}
+                  setSelectedSource={setSelectedSource}
+                  filteredAndSortedTalents={filteredAndSortedTalents}
+                  onDelete={handleDeleteTalent}
+                  onUpdate={handleOpenEdit}
+                  onRefresh={handleRefresh}
+                  isSidebarOpen={isSidebarOpen}
+                  isSidebarCollapsed={isSidebarCollapsed}
+                />
+                {isModalOpen && (
+                  <InfluencerForm
+                    onClose={() => {
+                      setIsModalOpen(false);
+                      setTalentToEdit(null);
+                    }}
+                    onSave={handleSaveTalent}
+                    initialData={talentToEdit}
+                  />
                 )}
               </div>
-            ) : null}
-            {activeTab === "tax" && <TaxCalculatorView />}
-            <div>
-              {activeTab === "SPK" && (
-                <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+            )}
+
+            {/* SPK View */}
+            {activeTab === "SPK" && (
+              <div className="p-3 sm:p-4 md:p-6 lg:p-8">
                 <SPKview spkList={spkList} fetchSPK={fetchSPK} />
-                </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Tax Calculator View */}
+            {activeTab === "tax" && <TaxCalculatorView />}
           </>
         )}
       </main>

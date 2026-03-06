@@ -2,9 +2,9 @@
  * ============================================
  * TALENT VIEW - MAIN COMPONENT
  * ============================================
- * 
+ *
  * Main component untuk manajemen talent (KOL/Influencer)
- * 
+ *
  * Fitur utama:
  * - Search dan filter talent (by name, source, tier, religion, status)
  * - Sortable table dengan pagination
@@ -13,12 +13,12 @@
  * - Real-time data refresh
  * - Detail modal view
  * - Delete confirmation with verification
- * 
+ *
  * Sub-components:
  * - TalentRow: Baris data talent di tabel
  * - FilterSelect: Dropdown filter yang reusable
  * - TalentDetailModal: Modal untuk view detail talent
- * 
+ *
  * Dependencies:
  * - useExcelActions: Hook untuk import/export Excel
  * - types: Talent interface & helper functions
@@ -44,7 +44,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-import TalentRow from "./TalentRow";
+import TalentRow from "./InfluencerTable";
 import FilterSelect from "./FilterSelect";
 import TalentDetailModal from "./TalentDetailModal";
 import { Talent, getSourceStyle } from "../../types";
@@ -286,7 +286,7 @@ export default function TalentView({
 
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-2xl font-bold mb-6 text-slate-800">
+      <h1 className="text-2xl font-bold mb-6 text-slate-800">
         Influencer Management
       </h1>
 
@@ -302,7 +302,7 @@ export default function TalentView({
               />
               <input
                 type="text"
-                placeholder="Search name, ethnic, or IG (@username)..."
+                placeholder="Search name, category, ethnic, or IG..."
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#1B3A5B]/10 outline-none transition-all bg-white shadow-sm text-black"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -318,12 +318,6 @@ export default function TalentView({
                 "Media",
                 "Clippers",
               ]}
-            />
-            <FilterSelect
-              placeholder="All Status"
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-              options={["Active", "Inactive"]}
             />
             <FilterSelect
               placeholder="All Tier"
@@ -427,8 +421,8 @@ export default function TalentView({
       </div>
 
       {/* TABLE SECTION */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
-        <table className="w-full text-left">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-200 text-slate-800 text-[12px] uppercase tracking-widest font-bold">
               <th className="p-5 text-center w-16">#</th>
@@ -454,7 +448,6 @@ export default function TalentView({
                 align="center"
               />
               <th className="p-5 text-center">Tier</th>
-              <th className="p-5 text-center">Status</th>
               <th className="p-5 text-center">Action</th>
             </tr>
           </thead>
@@ -472,7 +465,6 @@ export default function TalentView({
                   }}
                   setTalentToDelete={setTalentToDelete} // Kirim fungsi delete-nya
                   isLastTwo={index >= currentItems.length - 2}
-                  
                 />
               ))
             ) : (
@@ -498,6 +490,7 @@ export default function TalentView({
           getSourceStyle={getSourceStyle}
           onUpdate={onUpdate}
           setTalentToDelete={setTalentToDelete}
+          hideStatus={true}
         />
       )}
       {/* PAGINATION CONTROLS */}

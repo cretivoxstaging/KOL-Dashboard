@@ -49,11 +49,21 @@ export const generateHTML = (spkData: any): string => {
     const ket3 = spkData[`keterangan${i}_3`] || "";
 
     if (sow && String(sow).trim() !== "") {
-      const keterangan = [ket1, ket2, ket3]
-        .filter((k) => k && String(k).trim() !== "")
-        .join("<br/>");
+      // Build keterangan with IDs for horizontal scroll targeting (index-specific)
+      const keteranganParts: string[] = [];
+      if (ket1 && String(ket1).trim() !== "") {
+        keteranganParts.push(`<div id="sow-${i}-col-1">${ket1}</div>`);
+      }
+      if (ket2 && String(ket2).trim() !== "") {
+        keteranganParts.push(`<div id="sow-${i}-col-2">${ket2}</div>`);
+      }
+      if (ket3 && String(ket3).trim() !== "") {
+        keteranganParts.push(`<div id="sow-${i}-col-3">${ket3}</div>`);
+      }
+      const keterangan = keteranganParts.length > 0 ? keteranganParts.join("") : "-";
 
       sowRowsData.push({
+        index: i,
         sow: sow,
         jumlah: jumlah || "-",
         keterangan: keterangan || "-",
@@ -61,12 +71,21 @@ export const generateHTML = (spkData: any): string => {
     }
   }
 
-  // Build Talents List
+  // Build Talents List from array structure
   const talentsList: string[] = [];
-  for (let i = 1; i <= 5; i++) {
-    const talentName = spkData[`talent_name${i}`];
-    if (talentName && String(talentName).trim() !== "") {
-      talentsList.push(String(talentName));
+  if (spkData.talents && Array.isArray(spkData.talents)) {
+    talentsList.push(
+      ...spkData.talents
+        .filter((t: any) => t.name && String(t.name).trim() !== "")
+        .map((t: any) => String(t.name))
+    );
+  } else {
+    // Fallback: support old structure for backward compatibility
+    for (let i = 1; i <= 5; i++) {
+      const talentName = spkData[`talent_name${i}`];
+      if (talentName && String(talentName).trim() !== "") {
+        talentsList.push(String(talentName));
+      }
     }
   }
 
@@ -82,11 +101,11 @@ export const generateHTML = (spkData: any): string => {
       </tr>
     `;
   } else {
-    sowRowsData.forEach((row, index) => {
+    sowRowsData.forEach((row, idx) => {
       // For first row, show talent names (or all talents if only one SOW)
       // For subsequent rows, leave talent cell empty or repeat
       const talentDisplay =
-        index === 0
+        idx === 0
           ? talentsList.length > 0
             ? talentsList.join("<br/>")
             : "[Nama Talent]"
@@ -94,9 +113,9 @@ export const generateHTML = (spkData: any): string => {
 
       rowsHtml += `
         <tr>
-          <td style="border: 1pt solid black; padding: 8px; vertical-align: top;">${talentDisplay}</td>
-          <td style="border: 1pt solid black; padding: 8px; vertical-align: top;">${row.sow}</td>
-          <td style="border: 1pt solid black; padding: 8px; text-align: center; vertical-align: top;">${row.jumlah}</td>
+          <td id="sow-${row.index}-talent" style="border: 1pt solid black; padding: 8px; vertical-align: top;">${talentDisplay}</td>
+          <td id="sow-${row.index}-col-desc" style="border: 1pt solid black; padding: 8px; vertical-align: top;">${row.sow}</td>
+          <td id="sow-${row.index}-col-qty" style="border: 1pt solid black; padding: 8px; text-align: center; vertical-align: top;">${row.jumlah}</td>
           <td style="border: 1pt solid black; padding: 8px; vertical-align: top;">${row.keterangan}</td>
         </tr>
       `;
@@ -109,17 +128,35 @@ export const generateHTML = (spkData: any): string => {
 
   // ========== BUILD COMPETITORS LIST ==========
 
-  const competitorsList: string[] = [];
-  for (let i = 1; i <= 10; i++) {
-    const comp = spkData[`competitor${i}`];
-    if (comp && String(comp).trim() !== "") {
-      competitorsList.push(String(comp));
+  const competitorsList: Array<{index: number, id: string, name: string}> = [];
+  if (spkData.competitors && Array.isArray(spkData.competitors)) {
+    // New array structure with IDs
+    spkData.competitors.forEach((comp: any, idx: number) => {
+      if (comp.name && String(comp.name).trim() !== "") {
+        competitorsList.push({
+          index: idx + 1,
+          id: comp.id,
+          name: String(comp.name)
+        });
+      }
+    });
+  } else {
+    // Fallback: support old structure for backward compatibility
+    for (let i = 1; i <= 10; i++) {
+      const comp = spkData[`competitor${i}`];
+      if (comp && String(comp).trim() !== "") {
+        competitorsList.push({
+          index: i,
+          id: `competitor-${i}`,
+          name: String(comp)
+        });
+      }
     }
   }
 
   const competitorListHtml =
     competitorsList.length > 0
-      ? competitorsList.map((c, i) => `${i + 1}. ${c}`).join("<br/>")
+      ? competitorsList.map((c, i) => `<span id="competitor-${c.id}">${i + 1}. ${c.name}</span>`).join("<br/>")
       : "Produk sejenis";
 
   // ========== BUILD CONDITIONAL SECTIONS ==========
@@ -137,7 +174,7 @@ export const generateHTML = (spkData: any): string => {
         <tr>
           <td class="label-cell">${no++}.</td>
           <td class="field-name">Nama Perusahaan:</td>
-          <td class="background-yellow">${spkData.vendor_company_name}</td>
+          <td id="preview-vendor-company-name" class="background-yellow">${spkData.vendor_company_name}</td>
         </tr>
       `;
     }
@@ -146,22 +183,22 @@ export const generateHTML = (spkData: any): string => {
       <tr>
         <td class="label-cell">${no++}.</td>
         <td class="field-name">Nama Penandatangan:</td>
-        <td class="background-yellow">${spkData.vendor_name || "[Nama Vendor]"}</td>
+        <td id="preview-vendor-name" class="background-yellow">${spkData.vendor_name || "[Nama Vendor]"}</td>
       </tr>
       <tr>
         <td class="label-cell">${no++}.</td>
         <td class="field-name">NIK:</td>
-        <td class="background-yellow">${spkData.vendor_nik || "[NIK]"}</td>
+        <td id="preview-vendor-nik" class="background-yellow">${spkData.vendor_nik || "[NIK]"}</td>
       </tr>
       <tr>
         <td class="label-cell">${no++}.</td>
         <td class="field-name">Alamat KTP:</td>
-        <td class="background-yellow">${spkData.vendor_address || "[Alamat]"}</td>
+        <td id="preview-vendor-address" class="background-yellow">${spkData.vendor_address || "[Alamat]"}</td>
       </tr>
       <tr>
         <td class="label-cell">${no++}.</td>
         <td class="field-name">Bertindak Sebagai:</td>
-        <td class="background-yellow">${spkData.vendor_role || "[Peran]"}</td>
+        <td id="preview-vendor-role" class="background-yellow">${spkData.vendor_role || "[Peran]"}</td>
       </tr>
     `;
 
@@ -172,7 +209,7 @@ export const generateHTML = (spkData: any): string => {
   const collabNatureText = (() => {
     const competitorText =
       competitorsList.length > 0
-        ? competitorsList.join(", ")
+        ? competitorsList.map(c => c.name).join(", ")
         : "Produk sejenis";
 
     if (String(spkData.collab_nature).trim() === "Eksklusif") {
@@ -229,7 +266,7 @@ export const generateHTML = (spkData: any): string => {
       sections += `
         <tr>
           <td class="label-cell" style="vertical-align: top; padding-top: 8px">${no++}.</td>
-          <td class="field-name" style="vertical-align: top; padding-top: 8px">
+          <td class="field-name" style="vertical-align: top; padding-top: 8px" id="section-competitors">
             Kompetitor:
           </td>
           <td colspan="4" style="padding: 8px; text-align: justify">
@@ -250,12 +287,12 @@ export const generateHTML = (spkData: any): string => {
         <td colspan="4" style="padding:12px 16px; border-top:1.7pt solid black;">
           <div style="display:flex; gap:12px;">
             <span style="width:120px;">Project Fee</span>
-            <span>: Rp${formatCurrency(spkData.project_fee || 0)}</span>
+            <span id="preview-project-fee">: Rp${formatCurrency(spkData.project_fee || 0)}</span>
           </div>
 
           <div style="display:flex; gap:12px; margin-top:4px;">
             <span style="width:120px;">PPh 23 (2%)</span>
-            <span>: Rp${formatCurrency(spkData.pph_23 || 0)}</span>
+            <span id="preview-pph-23">: Rp${formatCurrency(spkData.pph_23 || 0)}</span>
           </div>
 
           <div style="margin:6px 0 8px 132px; font-family: monospace;">
@@ -264,7 +301,7 @@ export const generateHTML = (spkData: any): string => {
 
           <div style="display:flex; gap:12px;">
             <span style="width:120px;">Grand Total</span>
-            <span>: Rp${formatCurrency(spkData.grand_total || 0)}</span>
+            <span id="preview-grand-total">: Rp${formatCurrency(spkData.grand_total || 0)}</span>
           </div>
 
           <div style="margin-top:6px;font-size:11px;">
@@ -283,19 +320,19 @@ export const generateHTML = (spkData: any): string => {
           <table style="width: 100%; border-collapse: collapse; border: none;">
             <tr>
               <td style="border: none; padding: 4px 4px 4px 8px; width: 120px;">Nama Bank</td>
-              <td style="border: none; padding: 4px;">: ${spkData.bank_name || "[Nama Bank]"}</td>
+              <td id="preview-bank-name" style="border: none; padding: 4px;">: ${spkData.bank_name || "[Nama Bank]"}</td>
             </tr>
             <tr>
               <td style="border: none; padding: 4px 4px 4px 8px;">Cabang</td>
-              <td style="border: none; padding: 4px;">: ${spkData.bank_branch || "[Cabang]"}</td>
+              <td id="preview-bank-branch" style="border: none; padding: 4px;">: ${spkData.bank_branch || "[Cabang]"}</td>
             </tr>
             <tr>
               <td style="border: none; padding: 4px 4px 4px 8px;">No. Rekening</td>
-              <td style="border: none; padding: 4px;">: ${spkData.bank_account_number || "[No. Rekening]"}</td>
+              <td id="preview-bank-account-number" style="border: none; padding: 4px;">: ${spkData.bank_account_number || "[No. Rekening]"}</td>
             </tr>
             <tr>
               <td style="border: none; padding: 4px 4px 8px 8px;">Nama Akun</td>
-              <td style="border: none; padding: 4px;">: ${spkData.bank_account_name || "[Nama Pemilik]"}</td>
+              <td id="preview-bank-account-name" style="border: none; padding: 4px;">: ${spkData.bank_account_name || "[Nama Pemilik]"}</td>
             </tr>
           </table>
         </td>
@@ -310,7 +347,7 @@ export const generateHTML = (spkData: any): string => {
         <td colspan="4" style="padding: 8px; text-align: justify">
           Pembayaran <strong>secara penuh, yakni Rp ${formatCurrency(spkData.grand_total || 0)}</strong>
           (${spkData.grand_total_words || "[Terbilang]"} rupiah)
-          yang dibayarkan maksimal pada tanggal ${spkData.payment_date || "[Tanggal]"}.
+          yang dibayarkan maksimal pada tanggal <span id="preview-payment-date">${spkData.payment_date || "[Tanggal]"}</span>.
         </td>
       </tr>
     `;
@@ -351,6 +388,7 @@ export const generateHTML = (spkData: any): string => {
         line-height: 1.2;
         margin: 0;
         padding: 0;
+        overflow-x: auto;
       }
 
       .header-logo {
@@ -449,6 +487,7 @@ export const generateHTML = (spkData: any): string => {
 
       table.word-table {
         width: 100%;
+        min-width: 900px;
         border-collapse: collapse;
         margin-bottom: 5px;
       }
@@ -463,6 +502,7 @@ export const generateHTML = (spkData: any): string => {
       .section-header {
         background-color: white;
         font-weight: bold;
+        padding: 8px 16px !important;
       }
       .label-cell {
         width: 40px;
@@ -482,6 +522,20 @@ export const generateHTML = (spkData: any): string => {
 
       .page-break {
         break-before: page;
+      }
+
+      /* SOW column IDs for horizontal scroll precision - matches sow-{index}-col-{type} pattern */
+      [id^="sow-"][id*="-col-"],
+      [id^="sow-"][id$="-talent"] {
+        padding: 8px 12px !important;
+      }
+
+      /* Live Highlight untuk active section */
+      .active-highlight {
+        background-color: #fef08a !important;
+        transition: background-color 0.3s ease;
+        scroll-margin-left: 24px;
+        scroll-margin-right: 24px;
       }
     </style>
   </head>
@@ -518,7 +572,7 @@ export const generateHTML = (spkData: any): string => {
               </div>
 
               <table class="word-table">
-                <tr class="section-header">
+                <tr class="section-header" id="section-company">
                   <td colspan="3">Bagian I: Identitas Perusahaan</td>
                 </tr>
                 <tr>
@@ -536,12 +590,12 @@ export const generateHTML = (spkData: any): string => {
                 <tr>
                   <td class="label-cell">3.</td>
                   <td class="field-name">Nama Penandatangan:</td>
-                  <td class="background-yellow">${spkData.first_party_signer || "[Nama Penandatangan]"}</td>
+                  <td id="preview-first-party-signer" class="background-yellow">${spkData.first_party_signer || "[Nama Penandatangan]"}</td>
                 </tr>
                 <tr>
                   <td class="label-cell">4.</td>
                   <td class="field-name">Jabatan Penandatangan:</td>
-                  <td class="background-yellow">${spkData.first_party_position || "[Jabatan]"}</td>
+                  <td id="preview-first-party-position" class="background-yellow">${spkData.first_party_position || "[Jabatan]"}</td>
                 </tr>
                 <tr class="section-header">
                   <td colspan="3">
@@ -551,7 +605,7 @@ export const generateHTML = (spkData: any): string => {
               </table>
 
               <table class="word-table" style="margin-top: 30px">
-                <tr class="section-header">
+                <tr class="section-header" id="section-vendor">
                   <td colspan="3">Bagian II: Identitas Vendor</td>
                 </tr>
                 ${vendorIdentityRows}
@@ -578,33 +632,33 @@ export const generateHTML = (spkData: any): string => {
           <td style="border: none; padding: 0;">
             <div class="content">
               <table class="word-table">
-                <tr class="section-header">
+                <tr class="section-header" id="section-commercial">
                   <td colspan="3">Bagian III: Ketentuan Komersial</td>
                 </tr>
                 <tr>
                   <td class="label-cell">1.</td>
                   <td class="field-name">Merek yang dipromosikan:</td>
-                  <td class="background-yellow">${spkData.brand_name || "[Nama Brand]"}</td>
+                  <td id="preview-brand-name" class="background-yellow">${spkData.brand_name || "[Nama Brand]"}</td>
                 </tr>
                 <tr>
                   <td class="label-cell">2.</td>
                   <td class="field-name">Jenis Perusahaan:</td>
-                  <td class="background-yellow">${spkData.business_type || "[Jenis Bisnis]"}</td>
+                  <td id="preview-business-type" class="background-yellow">${spkData.business_type || "[Jenis Bisnis]"}</td>
                 </tr>
                 <tr>
                   <td class="label-cell">3.</td>
                   <td class="field-name">Jenis Kerjasama:</td>
-                  <td class="background-yellow">${spkData.collab_type || "[Jenis Kolaborasi]"}</td>
+                  <td id="preview-collab-type" class="background-yellow">${spkData.collab_type || "[Jenis Kolaborasi]"}</td>
                 </tr>
                 <tr>
                   <td class="label-cell">4.</td>
                   <td class="field-name">Jangka Waktu Kampanye Pemasaran:</td>
-                  <td class="background-yellow">${campaignPeriod}</td>
+                  <td id="preview-campaign-period" class="background-yellow">${campaignPeriod}</td>
                 </tr>
                 <tr>
                   <td class="label-cell">5.</td>
                   <td class="field-name">Sifat Kerjasama:</td>
-                  <td class="background-yellow">
+                  <td id="preview-collab-nature" class="background-yellow">
                     ${collabNatureText}
                   </td>
                 </tr>
@@ -627,6 +681,7 @@ export const generateHTML = (spkData: any): string => {
                   <td rowspan="${kewajibanRowspan}"
                     class="field-name"
                     style="width: 180px; vertical-align: top; padding-top: 8px"
+                    id="section-sow"
                   >
                     <span class="background-yellow">Kewajiban Pihak Kedua:</span>
                   </td>
@@ -692,6 +747,73 @@ export const generateHTML = (spkData: any): string => {
 
       </tbody>
     </table>
+    <script>
+      (function() {
+        var activeSection = '${spkData.activeSection || ''}';
+        
+        // Hapus semua highlight sebelumnya
+        var allHighlighted = document.querySelectorAll('.active-highlight');
+        for (var i = 0; i < allHighlighted.length; i++) {
+          allHighlighted[i].classList.remove('active-highlight');
+        }
+        
+        if (activeSection) {
+          if (window.requestAnimationFrame) {
+            requestAnimationFrame(function() {
+              // Try specific ID first
+              var element = document.getElementById(activeSection);
+              
+              // Fallback: if specific SOW column ID not found, try section-sow
+              if (!element && activeSection.indexOf('sow-') !== -1) {
+                element = document.getElementById('section-sow');
+              }
+              
+              if (element) {
+                // Add highlight class
+                element.classList.add('active-highlight');
+                
+                // Conditional horizontal scroll: center for wide SOW columns, start for other sections
+                var inlineAlignment = (activeSection.indexOf('sow') !== -1 || activeSection.indexOf('col') !== -1) 
+                  ? 'center' 
+                  : 'start';
+                
+                element.scrollIntoView({ 
+                  behavior: 'auto', 
+                  block: 'center', 
+                  inline: inlineAlignment 
+                });
+              }
+            });
+          } else {
+            setTimeout(function() {
+              // Try specific ID first
+              var element = document.getElementById(activeSection);
+              
+              // Fallback: if specific SOW column ID not found, try section-sow
+              if (!element && activeSection.indexOf('sow-') !== -1) {
+                element = document.getElementById('section-sow');
+              }
+              
+              if (element) {
+                // Add highlight class
+                element.classList.add('active-highlight');
+                
+                // Conditional horizontal scroll: center for wide SOW columns, start for other sections
+                var inlineAlignment = (activeSection.indexOf('sow') !== -1 || activeSection.indexOf('col') !== -1) 
+                  ? 'center' 
+                  : 'start';
+                
+                element.scrollIntoView({ 
+                  behavior: 'auto', 
+                  block: 'center', 
+                  inline: inlineAlignment 
+                });
+              }
+            }, 0);
+          }
+        }
+      })();
+    </script>
   </body>
 </html>
   `;

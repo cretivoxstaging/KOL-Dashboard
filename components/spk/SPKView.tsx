@@ -82,11 +82,14 @@ interface FormDataType {
   campaign_period: string;
   collab_nature: "Eksklusif" | "Non-Eksklusif";
 
-  // Section IV: Scope of Work (Talents & SOWs)
-  [key: string]: string; // Dynamic fields: talent_name1-5, sow1-10, dll
+  // Section IV: Scope of Work (Talents as Array with unique IDs)
+  talents: Array<{ id: string; name: string }>;
+  
+  // Section IV: SOWs - Keep dynamic for now as SOW structure is more complex
+  [key: string]: any; // Dynamic fields for sow1-10, etc
 
-  // Section V: Competitors (1-10)
-  // competitor1-10 generated dynamically
+  // Section V: Competitors (Array with unique IDs)
+  competitors: Array<{ id: string; name: string }>;
 
   // Section VI: Payment & Bank
   project_fee: string;
@@ -187,11 +190,11 @@ export default function SPKView({
     collab_nature: "Eksklusif",
 
     // Section IV: Scope of Work
-    ...initialTalents,
+    talents: initialTalents,
     ...initialSows,
 
     // Section V: Competitors
-    ...initialCompetitors,
+    competitors: initialCompetitors,
 
     // Section VI: Payment & Bank
     project_fee: "",
@@ -249,9 +252,9 @@ export default function SPKView({
       campaign_end: "",
       campaign_period: "",
       collab_nature: "Eksklusif",
-      ...initialTalents,
+      talents: generateInitialTalents(),
       ...initialSows,
-      ...initialCompetitors,
+      competitors: generateInitialCompetitors(),
       project_fee: "",
       pph_23: "",
       grand_total: "",
@@ -290,17 +293,44 @@ useEffect(() => {
       if (Object.keys(parsed).length > 0) {
         console.log("✓ Draft ditemukan, melakukan restore...");
         
+        // Convert flat structure to array structure if needed
+        if (!parsed.talents || !Array.isArray(parsed.talents)) {
+          const talentsArray: Array<{ id: string; name: string }> = [];
+          for (let i = 1; i <= 5; i++) {
+            const talentName = parsed[`talent_name${i}`];
+            if (talentName && talentName.trim() !== "") {
+              talentsArray.push({ id: crypto.randomUUID(), name: talentName });
+            }
+          }
+          if (talentsArray.length === 0) {
+            talentsArray.push({ id: crypto.randomUUID(), name: "" });
+          }
+          parsed.talents = talentsArray;
+        }
+
+        if (!parsed.competitors || !Array.isArray(parsed.competitors)) {
+          const competitorsArray: Array<{ id: string; name: string }> = [];
+          for (let i = 1; i <= 10; i++) {
+            const compName = parsed[`competitor${i}`];
+            if (compName && compName.trim() !== "") {
+              competitorsArray.push({ id: crypto.randomUUID(), name: compName });
+            }
+          }
+          if (competitorsArray.length === 0) {
+            competitorsArray.push({ id: crypto.randomUUID(), name: "" });
+          }
+          parsed.competitors = competitorsArray;
+        }
+        
         // Restore formData
         setFormData(parsed);
         
-        // Restore counters
-        const talentCount = localStorage.getItem("spk_active_talent");
-        const sowCount = localStorage.getItem("spk_active_sow");
-        const competitorCount = localStorage.getItem("spk_active_comp");
+        // Restore counters - derive from arrays if available
+        setActiveTalentCount(parsed.talents?.length || 1);
+        setActiveCompetitorCount(parsed.competitors?.length || 1);
         
-        if (talentCount) setActiveTalentCount(Number(talentCount));
+        const sowCount = localStorage.getItem("spk_active_sow");
         if (sowCount) setActiveSowCount(Number(sowCount));
-        if (competitorCount) setActiveCompetitorCount(Number(competitorCount));
         
         // Restore editingId jika ada (keep as string untuk nomor SPK)
         if (savedEditingId) {
@@ -333,9 +363,100 @@ useEffect(() => {
         ...prev,
         [name]: cleanValue,
       }));
+    } else if (name === "collab_nature" && value === "Non-Eksklusif") {
+      // Jika user memilih "Non-Eksklusif", kosongkan competitor array
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        competitors: [{ id: crypto.randomUUID(), name: "" }],
+      }));
+      // Reset competitor count to 1
+      setActiveCompetitorCount(1);
     } else {
       // Field lainnya normal
       setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  /**
+   * handleTalentChange - Update talent name by ID
+   * @param {string} id - Unique ID of the talent
+   * @param {string} value - New name value
+   */
+  const handleTalentChange = (id: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      talents: prev.talents.map((talent) =>
+        talent.id === id ? { ...talent, name: value } : talent
+      ),
+    }));
+  };
+
+  /**
+   * handleAddTalent - Add new talent (max 5)
+   */
+  const handleAddTalent = () => {
+    if (formData.talents.length < 5) {
+      setFormData((prev) => ({
+        ...prev,
+        talents: [...prev.talents, { id: crypto.randomUUID(), name: "" }],
+      }));
+      setActiveTalentCount((prev) => prev + 1);
+    }
+  };
+
+  /**
+   * handleRemoveTalent - Remove talent by ID
+   * @param {string} id - Unique ID of the talent to remove
+   */
+  const handleRemoveTalent = (id: string) => {
+    if (formData.talents.length > 1) {
+      setFormData((prev) => ({
+        ...prev,
+        talents: prev.talents.filter((talent) => talent.id !== id),
+      }));
+      setActiveTalentCount((prev) => prev - 1);
+    }
+  };
+
+  /**
+   * handleCompetitorChange - Update competitor name by ID
+   * @param {string} id - Unique ID of the competitor
+   * @param {string} value - New name value
+   */
+  const handleCompetitorChange = (id: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      competitors: prev.competitors.map((comp) =>
+        comp.id === id ? { ...comp, name: value } : comp
+      ),
+    }));
+  };
+
+  /**
+   * handleAddCompetitor - Add new competitor (max 10)
+   */
+  const handleAddCompetitor = () => {
+    if (formData.competitors.length < 10) {
+      setFormData((prev) => ({
+        ...prev,
+        competitors: [...prev.competitors, { id: crypto.randomUUID(), name: "" }],
+      }));
+      setActiveCompetitorCount((prev) => prev + 1);
+    }
+  };
+
+  /**
+   * handleRemoveCompetitor - Remove competitor by ID
+   * @param {string} id - Unique ID of the competitor to remove
+   */
+  const handleRemoveCompetitor = (id: string) => {
+    if (formData.competitors.length > 1) {
+      setFormData((prev) => ({
+        ...prev,
+        competitors: prev.competitors.filter((comp) => comp.id !== id),
+      }));
+      setActiveCompetitorCount((prev) => prev - 1);
     }
   };
 
@@ -475,20 +596,8 @@ const idToEdit = item.spk_number || item.number;
     }
 
     // ===== STEP 2: Detect Active Row Counts =====
-    let lastTalentIndex = 1;
-    for (let i = 1; i <= 5; i++) {
-      if (item[`talent_name${i}`] && item[`talent_name${i}`] !== "")
-        lastTalentIndex = i;
-    }
-    setActiveTalentCount(lastTalentIndex);
-
-    let lastCompIndex = 1;
-    for (let i = 1; i <= 10; i++) {
-      if (item[`competitor${i}`] && item[`competitor${i}`] !== "")
-        lastCompIndex = i;
-    }
-    setActiveCompetitorCount(lastCompIndex);
-
+    // For talents and competitors, count from arrays after conversion
+    
     let lastSowIndex = 1;
     for (let i = 1; i <= 10; i++) {
       if (item[`sow${i}`] && item[`sow${i}`] !== "") lastSowIndex = i;
@@ -522,30 +631,41 @@ const idToEdit = item.spk_number || item.number;
       {},
     );
 
-    const talentData = Array.from({ length: 5 }).reduce<Record<string, string>>(
-      (acc, _, i) => {
-        const n = i + 1;
-        acc[`talent_name${n}`] = item[`talent_name${n}`] || "";
-        return acc;
-      },
-      {},
-    );
+    // Convert flat talent structure to array with IDs
+    const talentsArray: Array<{ id: string; name: string }> = [];
+    for (let i = 1; i <= 5; i++) {
+      const talentName = item[`talent_name${i}`];
+      if (talentName && talentName.trim() !== "") {
+        talentsArray.push({ id: crypto.randomUUID(), name: talentName });
+      }
+    }
+    // Ensure at least one empty talent
+    if (talentsArray.length === 0) {
+      talentsArray.push({ id: crypto.randomUUID(), name: "" });
+    }
+    setActiveTalentCount(talentsArray.length);
 
-    const competitorData = Array.from({ length: 10 }).reduce<
-      Record<string, string>
-    >((acc, _, i) => {
-      const n = i + 1;
-      acc[`competitor${n}`] = item[`competitor${n}`] || "";
-      return acc;
-    }, {});
+    // Convert flat competitor structure to array with IDs
+    const competitorsArray: Array<{ id: string; name: string }> = [];
+    for (let i = 1; i <= 10; i++) {
+      const compName = item[`competitor${i}`];
+      if (compName && compName.trim() !== "") {
+        competitorsArray.push({ id: crypto.randomUUID(), name: compName });
+      }
+    }
+    // Ensure at least one empty competitor
+    if (competitorsArray.length === 0) {
+      competitorsArray.push({ id: crypto.randomUUID(), name: "" });
+    }
+    setActiveCompetitorCount(competitorsArray.length);
 
     // ===== STEP 5: Set Form Data (Order Matters!) =====
     setFormData({
       ...formData,
       ...resetData, // FORCE kosong dulu
-      ...talentData, // Fill talent dari DB
+      talents: talentsArray, // Fill talent array dari DB
       ...sowData, // Fill SOW dari DB
-      ...competitorData, // Fill competitor dari DB
+      competitors: competitorsArray, // Fill competitor array dari DB
       first_party_signer: item.first_party_signer || "",
       first_party_position: item.first_party_position || "",
       vendor_name: item.vendor_name || "",
@@ -602,14 +722,24 @@ const idToEdit = item.spk_number || item.number;
 
       // ===== STEP 2: Build Competitor Text =====
       const activeCompetitorsList = [];
-      for (let i = 1; i <= 10; i++) {
-        const val = formData[`competitor${i}` as keyof FormDataType];
-        if (
-          i <= activeCompetitorCount &&
-          val &&
-          (val as string).trim() !== ""
-        ) {
-          activeCompetitorsList.push((val as string).trim());
+      // Support both new array structure and old flat structure
+      if (formData.competitors && Array.isArray(formData.competitors)) {
+        formData.competitors.forEach((comp: any) => {
+          if (comp.name && comp.name.trim() !== "") {
+            activeCompetitorsList.push(comp.name.trim());
+          }
+        });
+      } else {
+        // Fallback for old structure
+        for (let i = 1; i <= 10; i++) {
+          const val = formData[`competitor${i}` as keyof FormDataType];
+          if (
+            i <= activeCompetitorCount &&
+            val &&
+            (val as string).trim() !== ""
+          ) {
+            activeCompetitorsList.push((val as string).trim());
+          }
         }
       }
       const listCompetitorText = activeCompetitorsList.join(", ");
@@ -682,21 +812,47 @@ const idToEdit = item.spk_number || item.number;
       }
 
       // ===== STEP 6: Add Active Talents =====
-      for (let i = 1; i <= 5; i++) {
-        const val = formData[`talent_name${i}` as keyof FormDataType];
-        payload[`talent_name${i}`] =
-          i <= activeTalentCount && val && (val as string).trim() !== ""
-            ? val
-            : null;
+      // Convert new array structure to flat structure for API
+      if (formData.talents && Array.isArray(formData.talents)) {
+        formData.talents.forEach((talent: any, index: number) => {
+          const i = index + 1;
+          payload[`talent_name${i}`] = talent.name && talent.name.trim() !== "" ? talent.name : null;
+        });
+        // Fill remaining slots with null
+        for (let i = formData.talents.length + 1; i <= 5; i++) {
+          payload[`talent_name${i}`] = null;
+        }
+      } else {
+        // Fallback for old structure
+        for (let i = 1; i <= 5; i++) {
+          const val = formData[`talent_name${i}` as keyof FormDataType];
+          payload[`talent_name${i}`] =
+            i <= activeTalentCount && val && (val as string).trim() !== ""
+              ? val
+              : null;
+        }
       }
 
       // ===== STEP 7: Add Active Competitors =====
-      for (let i = 1; i <= 10; i++) {
-        const val = formData[`competitor${i}` as keyof FormDataType];
-        payload[`competitor${i}`] =
-          i <= activeCompetitorCount && val && (val as string).trim() !== ""
-            ? val
-            : null;
+      // Convert new array structure to flat structure for API
+      if (formData.competitors && Array.isArray(formData.competitors)) {
+        formData.competitors.forEach((comp: any, index: number) => {
+          const i = index + 1;
+          payload[`competitor${i}`] = comp.name && comp.name.trim() !== "" ? comp.name : null;
+        });
+        // Fill remaining slots with null
+        for (let i = formData.competitors.length + 1; i <= 10; i++) {
+          payload[`competitor${i}`] = null;
+        }
+      } else {
+        // Fallback for old structure
+        for (let i = 1; i <= 10; i++) {
+          const val = formData[`competitor${i}` as keyof FormDataType];
+          payload[`competitor${i}`] =
+            i <= activeCompetitorCount && val && (val as string).trim() !== ""
+              ? val
+              : null;
+        }
       }
 
       console.log("📤 FINAL PAYLOAD:", payload);
@@ -890,12 +1046,18 @@ const idToEdit = item.spk_number || item.number;
           editingId={editingId}
           activeTalentCount={activeTalentCount}
           setActiveTalentCount={setActiveTalentCount}
+          onTalentChange={handleTalentChange}
+          onAddTalent={handleAddTalent}
+          onRemoveTalent={handleRemoveTalent}
           activeSowCount={activeSowCount}
           sowIds={sowIds}
           onAddSow={handleAddSow}
           onRemoveSow={handleRemoveSpecificSow}
           activeCompetitorCount={activeCompetitorCount}
           setActiveCompetitorCount={setActiveCompetitorCount}
+          onCompetitorChange={handleCompetitorChange}
+          onAddCompetitor={handleAddCompetitor}
+          onRemoveCompetitor={handleRemoveCompetitor}
         />
 
         {/* ============================================ */}

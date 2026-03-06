@@ -134,7 +134,19 @@ const TalentRow: React.FC<TalentRowProps> = ({
           <div>
             <p className="font-bold text-slate-800">{t.name}</p>
             <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
-              <Instagram size={10} className="text-pink-500" /> {t.igAccount}
+              <Instagram size={10} className="text-pink-500" />
+              {t.igAccount ? (
+                <a
+                  href={`https://instagram.com/${t.igAccount.replace(/^@/, "").trim()}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  {t.igAccount}
+                </a>
+              ) : (
+                <span>-</span>
+              )}
             </div>
           </div>
         </div>
@@ -165,13 +177,6 @@ const TalentRow: React.FC<TalentRowProps> = ({
             TT: {t.tier_tiktok || "Nano"}
           </span>
         </div>
-      </td>
-      <td className="p-5 text-center">
-        <span
-          className={`px-3 py-1 rounded-full text-[9px] font-extrabold uppercase ${t.status === "Active" ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"}`}
-        >
-          {t.status}
-        </span>
       </td>
 
       {/* DROPDOWN ACTION */}

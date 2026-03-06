@@ -1,9 +1,32 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Talent } from "@/types";
 import { formatDate } from "@/types";
-import { ChevronDown, Eye, RefreshCw, Pencil, Trash2, X, MapPin, Instagram, Phone, Users, Heart, Cake, Briefcase, GraduationCap, AlertCircle } from "lucide-react";
+import * as XLSX from "xlsx";
+import {
+  ChevronDown,
+  Eye,
+  RefreshCw,
+  Pencil,
+  Trash2,
+  X,
+  MapPin,
+  Instagram,
+  Phone,
+  Users,
+  Heart,
+  Cake,
+  Briefcase,
+  GraduationCap,
+  AlertCircle,
+  Clock,
+  Plus,
+  Search,
+  Download,
+  Upload,
+} from "lucide-react";
+import EditTalentModal from "./EditTalentModal";
 
 interface TalentTableProps {
   talents: Talent[];
@@ -68,6 +91,10 @@ const TalentTable: React.FC<TalentTableProps> = ({
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [talentToDelete, setTalentToDelete] = useState<Talent | null>(null);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editingTalent, setEditingTalent] = useState<Talent | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const [syncingId, setSyncingId] = useState<number | null>(null);
@@ -75,14 +102,31 @@ const TalentTable: React.FC<TalentTableProps> = ({
   const [selectedTalent, setSelectedTalent] = useState<Talent | null>(null);
   const itemsPerPage = 10;
 
+  const getTalentStatusValue = (talent: Talent) => {
+    const statusFromTalent = (talent as any)?.talent_status;
+    const status = statusFromTalent ?? talent.status ?? "";
+    return String(status).trim();
+  };
+
   // Filter only internal talent (source === "talent")
   const internalTalents = useMemo(() => {
     return filteredAndSortedTalents.filter(
       (item) =>
         item.source?.toLowerCase() === "talent" ||
-        item.source?.toLowerCase() === "talent"
+        item.source?.toLowerCase() === "talent",
     );
   }, [filteredAndSortedTalents]);
+
+  const statusOptions = useMemo(() => {
+    const uniqueStatuses = Array.from(
+      new Set(
+        internalTalents
+          .map((talent) => getTalentStatusValue(talent))
+          .filter((status) => status.length > 0),
+      ),
+    );
+    return uniqueStatuses;
+  }, [internalTalents]);
 
   // Apply search filter
   const searchFilteredTalents = useMemo(() => {
@@ -93,13 +137,15 @@ const TalentTable: React.FC<TalentTableProps> = ({
       const name = talent.name?.toLowerCase() || "";
       const email = talent.email?.toLowerCase() || "";
       const phone = talent.contactPerson?.toLowerCase() || "";
-      const status = talent.status?.toLowerCase() || "";
+      const status = getTalentStatusValue(talent).toLowerCase();
+      const category = talent.category?.toLowerCase() || "";
 
       return (
         name.includes(searchLower) ||
         email.includes(searchLower) ||
         phone.includes(searchLower) ||
-        status.includes(searchLower)
+        status.includes(searchLower) ||
+        category.includes(searchLower)
       );
     });
   }, [searchTerm, internalTalents]);
@@ -109,9 +155,11 @@ const TalentTable: React.FC<TalentTableProps> = ({
     if (!selectedStatus || selectedStatus === "All") {
       return searchFilteredTalents;
     }
-    return searchFilteredTalents.filter(
-      (talent) => talent.status === selectedStatus
-    );
+    const selectedStatusNormalized = selectedStatus.trim().toLowerCase();
+    return searchFilteredTalents.filter((talent) => {
+      const statusNormalized = getTalentStatusValue(talent).toLowerCase();
+      return statusNormalized === selectedStatusNormalized;
+    });
   }, [selectedStatus, searchFilteredTalents]);
 
   // Pagination
@@ -120,31 +168,93 @@ const TalentTable: React.FC<TalentTableProps> = ({
   const endIndex = startIndex + itemsPerPage;
   const paginatedTalents = statusFilteredTalents.slice(startIndex, endIndex);
 
-  const handleEdit = (talent: Talent) => {
-    setTalentToEdit(talent);
-    setIsModalOpen(true);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedStatus]);
+
+  const handleEditRequest = (talent: Talent) => {
+    setEditingTalent(talent);
+    setIsEditOpen(true);
+    setOpenDropdown(null);
   };
 
-  const handleDeleteClick = (talent: Talent) => {
-    setTalentToDelete(talent);
-    setShowDeleteModal(true);
-  };
+  const handleUpdate = async (
+    updatedTalent: Talent,
+    event?: React.FormEvent<HTMLFormElement>,
+  ) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
 
-  const confirmDelete = () => {
-    if (talentToDelete) {
-      onDelete(talentToDelete.id);
-      setShowDeleteModal(false);
-      setTalentToDelete(null);
+    try {
+      setIsUpdating(true);
+      const selectedStatus =
+        updatedTalent.status === "Taken" ? "Taken" : "Available";
+
+      const payload = {
+        name: updatedTalent.name,
+        domicile: updatedTalent.domisili || "",
+        instagram_username: updatedTalent.igAccount || "",
+        contact_person: updatedTalent.contactPerson || "",
+        ethnicity: updatedTalent.suku || "",
+        religion: updatedTalent.agama || "",
+        reason_for_joining: updatedTalent.alasan || "",
+        hobby: updatedTalent.hobby || "",
+        age: String(updatedTalent.umur || ""),
+        occupation: updatedTalent.pekerjaan || "",
+        university: updatedTalent.tempatKuliah || "",
+        status: selectedStatus,
+        talent_status: selectedStatus,
+        source: "talent",
+        last_update: new Date().toISOString(),
+      };
+
+      const response = await fetch(`/api/Talent/${updatedTalent.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal update talent");
+      }
+
+      setIsEditOpen(false);
+      setEditingTalent(null);
+      await onRefresh();
+    } catch (error) {
+      console.error("[Talent Edit] Update failed:", error);
+      alert("Gagal menyimpan perubahan talent.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
+  const handleDeleteRequest = (talent: Talent) => {
+    setTalentToDelete(talent);
+    setDeleteConfirmationText("");
+    setShowDeleteModal(true);
+    setOpenDropdown(null);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!talentToDelete) return;
+
+    const expectedName = talentToDelete.name?.trim() || "";
+    if (expectedName && deleteConfirmationText.trim() !== expectedName) {
+      return;
+    }
+
+    onDelete(talentToDelete.id);
+    setShowDeleteModal(false);
+    setTalentToDelete(null);
+    setDeleteConfirmationText("");
+  };
+
   const handleManualSync = async (talent: Talent) => {
-    // Check if at least one account exists
-    if (
-      (!talent.igAccount || talent.igAccount === "-") &&
-      (!talent.tiktokAccount || talent.tiktokAccount === "-")
-    ) {
-      alert("Username IG & TikTok kosong, tidak ada yang bisa di-sync.");
+    if (!talent.igAccount || talent.igAccount === "-") {
+      alert("Username IG kosong, tidak ada yang bisa di-sync.");
       return;
     }
 
@@ -156,12 +266,6 @@ const TalentTable: React.FC<TalentTableProps> = ({
         const igUser = talent.igAccount.replace("@", "").trim();
         const igUrl = `/api/instagram?username=${encodeURIComponent(igUser)}&id=${talent.id}`;
         syncTasks.push(fetch(igUrl));
-      }
-
-      if (talent.tiktokAccount && talent.tiktokAccount !== "-") {
-        const ttUser = talent.tiktokAccount.replace("@", "").trim();
-        const ttUrl = `/api/tiktok?username=${encodeURIComponent(ttUser)}&id=${talent.id}`;
-        syncTasks.push(fetch(ttUrl));
       }
 
       console.log(`[Sync] Menjalankan ${syncTasks.length} task sync...`);
@@ -190,14 +294,96 @@ const TalentTable: React.FC<TalentTableProps> = ({
     setOpenDropdown(null);
   };
 
+  const exportToExcel = () => {
+    if (statusFilteredTalents.length === 0) {
+      alert("Tidak ada data talent untuk diexport.");
+      return;
+    }
+
+    const exportRows = statusFilteredTalents.map((talent) => ({
+      ID: talent.id,
+      Nama: talent.name || "",
+      Umur: talent.umur || "",
+      Suku: talent.suku || "",
+      Agama: talent.agama || "",
+      Domisili: talent.domisili || "",
+      Pekerjaan: talent.pekerjaan || "",
+      Tempat_Kuliah: talent.tempatKuliah || "",
+      Hobby: talent.hobby || "",
+      Alasan: talent.alasan || "",
+      IG_Account: talent.igAccount || "",
+      IG_Followers: talent.igFollowers ?? 0,
+      WA_Contact: talent.contactPerson || "",
+      Category: talent.category || "",
+      Status: getTalentStatusValue(talent),
+      Email: talent.email || "",
+      Last_Update: talent.last_update || "",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Talent");
+
+    const today = new Date();
+    const dateLabel = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    XLSX.writeFile(workbook, `Data_Talent_${dateLabel}.xlsx`);
+  };
+
+  // Helper component untuk InfoCard yang reusable
+  const InfoCard = ({
+    icon: Icon,
+    label,
+    value,
+    fullWidth = false,
+    isStatus = false,
+    isBadge = false,
+  }: any) => (
+    <div
+      className={`bg-slate-50 rounded-xl p-4 border border-slate-200 ${fullWidth ? "col-span-full" : ""}`}
+    >
+      <div className="flex items-center gap-3 mb-2">
+        {Icon && <Icon size={16} className="text-slate-600" />}
+        <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">
+          {label}
+        </span>
+      </div>
+      {isStatus ? (
+        <span
+          className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${getStatusBadgeStyle(value)}`}
+        >
+          {value || "Unknown"}
+        </span>
+      ) : isBadge ? (
+        <span className="inline-block px-2 py-1 bg-slate-200 text-slate-700 text-xs font-bold rounded-md">
+          {value || "-"}
+        </span>
+      ) : (
+        <p className="text-sm font-medium text-slate-900">{value || "-"}</p>
+      )}
+    </div>
+  );
+
+  const DetailItem = ({
+    label,
+    value,
+  }: {
+    label: string;
+    value?: string | null;
+  }) => (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-tighter mb-0.5">
+        {label}
+      </p>
+      <p className="text-xs font-bold text-slate-700">{value || "-"}</p>
+    </div>
+  );
+
   const getStatusBadgeStyle = (status: string) => {
     switch (status?.toLowerCase()) {
-      case "active":
+      case "available":
         return "bg-green-100 text-green-700 border border-green-200";
-      case "inactive":
+      case "taken":
         return "bg-red-100 text-red-700 border border-red-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-700 border border-yellow-200";
       default:
         return "bg-gray-100 text-gray-700 border border-gray-200";
     }
@@ -205,7 +391,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           <p className="mt-4 text-gray-600">Loading internal talent data...</p>
@@ -221,98 +407,78 @@ const TalentTable: React.FC<TalentTableProps> = ({
         Talent Management
       </h1>
 
+{/* Stats Summary */}
+<div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+  {/* Card 1: Total khusus Talent saja */}
+  <div className="bg-white border border-gray-200 rounded-lg p-4">
+    <div className="text-sm text-gray-600 mb-1">Total Talent</div>
+    <div className="text-2xl font-bold text-gray-900">
+      {talents.filter((t) => t.source?.toLowerCase() === "talent").length}
+    </div>
+  </div>
+
+  {/* Card 2: Available khusus yang source-nya Talent */}
+  <div className="bg-white border border-gray-200 rounded-lg p-4">
+    <div className="text-sm text-gray-600 mb-1">Available</div>
+    <div className="text-2xl font-bold text-green-600">
+      {
+        talents.filter(
+          (t) => 
+            t.source?.toLowerCase() === "talent" && 
+            (t.status?.toLowerCase() === "active" || t.status?.toLowerCase() === "available")
+        ).length
+      }
+    </div>
+  </div>
+
+  {/* Card 3: Taken khusus yang source-nya Talent */}
+  <div className="bg-white border border-gray-200 rounded-lg p-4">
+    <div className="text-sm text-gray-600 mb-1">Taken</div>
+    <div className="text-2xl font-bold text-red-600">
+      {
+        talents.filter(
+          (t) => 
+            t.source?.toLowerCase() === "talent" && 
+            (t.status?.toLowerCase() === "inactive" || t.status?.toLowerCase() === "taken")
+        ).length
+      }
+    </div>
+  </div>
+</div>
+
       {/* Action Bar */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full sm:w-auto">
-          {/* Search Input */}
-          <div className="relative flex-1 min-w-[200px]">
-            <input
-              type="text"
-              placeholder="Search by name, email, or phone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <svg
-              className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-
-          {/* Status Filter */}
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-          >
-            <option value="All">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Pending">Pending</option>
-          </select>
+      <div className="mb-6 flex flex-col md:flex-row md:items-center gap-3 w-full">
+        <div className="relative w-full md:w-1/2 max-w-md">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            size={16}
+          />
+          <input
+            type="text"
+            placeholder="Search by name, email, or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 pl-9 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+          />
         </div>
 
-        {/* Add New Button */}
-        <button
-          onClick={() => {
-            setTalentToEdit(null);
-            setIsModalOpen(true);
-          }}
-          className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+        <select
+          value={selectedStatus}
+          onChange={(e) => setSelectedStatus(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-40 text-black font-medium text-sm"
         >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-        </button>
-      </div>
+          <option value="All">All Status</option>
+          <option value="Available">Available</option>
+          <option value="Taken">Taken</option>
+        </select>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="text-sm text-gray-600 mb-1">Total Talent</div>
-          <div className="text-2xl font-bold text-gray-900">
-            {internalTalents.length}
-          </div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="text-sm text-gray-600 mb-1">Active</div>
-          <div className="text-2xl font-bold text-green-600">
-            {
-              internalTalents.filter(
-                (t) => t.status?.toLowerCase() === "active"
-              ).length
-            }
-          </div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="text-sm text-gray-600 mb-1">Inactive</div>
-          <div className="text-2xl font-bold text-red-600">
-            {
-              internalTalents.filter(
-                (t) => t.status?.toLowerCase() === "inactive"
-              ).length
-            }
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={exportToExcel}
+          className="md:ml-auto inline-flex items-center bg-green-500 hover:bg-green-600 justify-center gap-2 px-5 py-3 rounded-2xl font-bold text-white shadow-xl shadow-blue-900/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+        >
+          <Upload size={18} />
+        </button>
       </div>
 
       {/* Table */}
@@ -333,6 +499,9 @@ const TalentTable: React.FC<TalentTableProps> = ({
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Pekerjaan
                 </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Status
+                </th>
                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Actions
                 </th>
@@ -341,7 +510,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
             <tbody className="divide-y divide-gray-200">
               {paginatedTalents.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="text-gray-500">
                       <svg
                         className="mx-auto h-12 w-12 text-gray-400 mb-4"
@@ -370,9 +539,14 @@ const TalentTable: React.FC<TalentTableProps> = ({
                   const isSyncing = syncingId === talent.id;
 
                   // Format Instagram username
-                  const igUsername = talent.igAccount 
-                    ? (talent.igAccount.startsWith('@') ? talent.igAccount : `@${talent.igAccount}`)
-                    : '-';
+                  const igUsername = talent.igAccount
+                    ? talent.igAccount.startsWith("@")
+                      ? talent.igAccount
+                      : `@${talent.igAccount}`
+                    : "-";
+                  const igUrlUsername = (talent.igAccount || "")
+                    .replace("@", "")
+                    .trim();
 
                   return (
                     <tr
@@ -414,9 +588,20 @@ const TalentTable: React.FC<TalentTableProps> = ({
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <Instagram size={14} className="text-pink-500" />
-                          <span className="text-sm font-medium text-gray-900">
-                            {igUsername}
-                          </span>
+                          {igUrlUsername ? (
+                            <a
+                              href={`https://instagram.com/${igUrlUsername}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-blue-600 hover:underline"
+                            >
+                              {igUsername}
+                            </a>
+                          ) : (
+                            <span className="text-sm font-medium text-gray-900">
+                              {igUsername}
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -430,14 +615,28 @@ const TalentTable: React.FC<TalentTableProps> = ({
                         </div>
                       </td>
 
+                      {/* Status */}
+                      <td className="px-6 py-4">
+                        {(() => {
+                          const talentStatus = getTalentStatusValue(talent);
+                          return (
+                            <span
+                              className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusBadgeStyle(
+                                talentStatus,
+                              )}`}
+                            >
+                              {talentStatus || "-"}
+                            </span>
+                          );
+                        })()}
+                      </td>
+
                       {/* Actions - Dropdown */}
                       <td className="px-6 py-4 text-center">
                         <div className="relative inline-block text-left">
                           <button
                             onClick={() =>
-                              setOpenDropdown(
-                                isDropdownOpen ? null : talent.id
-                              )
+                              setOpenDropdown(isDropdownOpen ? null : talent.id)
                             }
                             style={{ backgroundColor: "#007AFF" }}
                             className="flex items-center gap-2 text-white px-4 py-2 rounded-lg text-[10px] font-bold transition-all shadow-sm hover:opacity-80"
@@ -493,12 +692,14 @@ const TalentTable: React.FC<TalentTableProps> = ({
 
                                 <button
                                   onClick={() => {
-                                    handleEdit(talent);
-                                    setOpenDropdown(null);
+                                    handleEditRequest(talent);
                                   }}
                                   className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                                 >
-                                  <Pencil size={14} className="text-amber-500" />{" "}
+                                  <Pencil
+                                    size={14}
+                                    className="text-amber-500"
+                                  />{" "}
                                   Edit
                                 </button>
 
@@ -506,8 +707,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
 
                                 <button
                                   onClick={() => {
-                                    handleDeleteClick(talent);
-                                    setOpenDropdown(null);
+                                    handleDeleteRequest(talent);
                                   }}
                                   className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors"
                                 >
@@ -556,7 +756,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                     >
                       {page}
                     </button>
-                  )
+                  ),
                 )}
               </div>
               <button
@@ -575,73 +775,116 @@ const TalentTable: React.FC<TalentTableProps> = ({
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && talentToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-red-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-120 p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-4xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200 p-8">
+            {/* Icon & Title */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-red-50 rounded-lg text-red-600">
+                <Trash2 size={24} strokeWidth={2.5} />
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Confirm Delete
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Are you sure you want to delete{" "}
-                  <span className="font-medium">{talentToDelete.name}</span>?
-                  This action cannot be undone.
-                </p>
-              </div>
+              <h3 className="text-2xl font-black text-slate-800 tracking-tight">
+                Delete Talent
+              </h3>
             </div>
-            <div className="flex gap-3 justify-end">
+
+            {/* Warning Box */}
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6">
+              <p className="text-sm font-bold text-red-800 mb-1">Warning:</p>
+              <p className="text-xs text-red-600 leading-relaxed font-medium">
+                Action ini tidak bisa dibatalkan. Data talent{" "}
+                <span className="font-black underline">
+                  {talentToDelete.name}
+                </span>{" "}
+                akan dihapus permanen.
+              </p>
+            </div>
+
+            {/* Input Confirmation */}
+            <div className="space-y-3 mb-8">
+              <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider ml-1">
+                Ketik <span className="text-red-600 italic">delete</span> untuk
+                konfirmasi:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder="delete"
+                className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all placeholder:text-slate-300"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowDeleteModal(false);
                   setTalentToDelete(null);
+                  setDeleteConfirmationText("");
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 py-4 border border-slate-200 text-slate-600 rounded-2xl font-black text-sm hover:bg-slate-50 transition-all active:scale-95"
               >
                 Cancel
               </button>
               <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                onClick={handleConfirmDelete}
+                // LOGIKA: Cuma aktif kalau user ngetik "delete" persis
+                disabled={deleteConfirmationText.toLowerCase() !== "delete"}
+                className="flex-[1.5] py-4 bg-red-500 text-white rounded-2xl font-black text-sm shadow-lg shadow-red-200 hover:bg-red-600 transition-all disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95"
               >
-                Delete
+                <Trash2 size={16} />
+                Delete Talent
               </button>
             </div>
           </div>
         </div>
       )}
 
+      <EditTalentModal
+        isOpen={isEditOpen}
+        talent={editingTalent}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingTalent(null);
+        }}
+        onUpdate={(talent, event) => handleUpdate(talent, event)}
+        isLoading={isUpdating}
+      />
+
       {/* Detail Modal - Full Data Display */}
       {detailModalOpen && selectedTalent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl max-w-4xl w-full my-8 shadow-2xl">
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-5 rounded-t-xl flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-bold text-xl">
-                    {selectedTalent.name?.charAt(0).toUpperCase() || "?"}
-                  </span>
+        <div
+          className={
+            "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
+          }
+        >
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide">
+            <div className="flex justify-between items-start mb-8">
+              <div className="flex gap-4">
+                <div className="w-20 h-20 rounded-2xl bg-[#1B3A5B] flex items-center justify-center text-3xl font-bold text-white uppercase shadow-lg shadow-[#1B3A5B]/20">
+                  {selectedTalent.name?.[0] || "?"}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">
-                    {selectedTalent.name}
-                  </h2>
-                  <p className="text-blue-100 text-sm">Detail Informasi Talent</p>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-2xl font-black text-[#1B3A5B]">
+                      {selectedTalent.name}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2 text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${getStatusBadgeStyle(
+                          getTalentStatusValue(selectedTalent),
+                        )}`}
+                      >
+                        {getTalentStatusValue(selectedTalent) || "-"}
+                      </span>
+                      <Clock size={12} />
+                      <span className="text-[10px] font-medium">
+                        Last updated: {formatDate(selectedTalent.last_update)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
               <button
@@ -649,205 +892,101 @@ const TalentTable: React.FC<TalentTableProps> = ({
                   setDetailModalOpen(false);
                   setSelectedTalent(null);
                 }}
-                className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-700"
               >
-                <X size={24} />
+                <Plus size={24} className="rotate-45" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 max-h-[70vh] overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Nama */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Users size={18} className="text-blue-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Nama Lengkap
-                    </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+              <div className="space-y-5">
+                <h4 className="text-[11px] font-bold text-black uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                  Personal Information
+                </h4>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-tighter mb-0.5">
+                      Contact Person
+                    </p>
+                    {selectedTalent.contactPerson ? (
+                      <a
+                        href={`https://wa.me/${selectedTalent.contactPerson.replace(/[^0-9]/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold text-green-600 hover:text-green-700 flex items-center gap-1 hover:underline"
+                      >
+                        <svg
+                          className="w-3 h-3"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.937 3.672 1.43 5.661 1.43h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                        </svg>
+                        {selectedTalent.contactPerson}
+                      </a>
+                    ) : (
+                      <p className="text-xs font-bold text-slate-300">-</p>
+                    )}
                   </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.name || "-"}
-                  </p>
+                  <DetailItem
+                    label="Umur"
+                    value={`${selectedTalent.umur || "-"} Tahun`}
+                  />
+                  <DetailItem label="Religion" value={selectedTalent.agama} />
+                  <DetailItem
+                    label="Occupation"
+                    value={selectedTalent.pekerjaan}
+                  />
+                  <DetailItem label="Ethnicity" value={selectedTalent.suku} />
+                  <DetailItem label="Hobby" value={selectedTalent.hobby} />
+                  <DetailItem
+                    label="Education"
+                    value={selectedTalent.tempatKuliah}
+                  />
+                  <DetailItem
+                    label="Domisili / Location"
+                    value={selectedTalent.domisili}
+                  />
                 </div>
+              </div>
 
-                {/* Domisili */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <MapPin size={18} className="text-green-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Domisili
-                    </span>
-                  </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.domisili || "-"}
-                  </p>
-                </div>
-
-                {/* Instagram Account */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Instagram size={18} className="text-pink-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <div className="space-y-5">
+                <h4 className="text-[11px] font-bold text-black uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                  Social Media & Insight
+                </h4>
+                <div className="space-y-4">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <p className="text-[9px] font-bold text-slate-700 uppercase mb-1">
                       Instagram Account
-                    </span>
+                    </p>
+                    {selectedTalent.igAccount ? (
+                      <a
+                        href={`https://instagram.com/${selectedTalent.igAccount.replace("@", "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-bold text-blue-600 flex items-center gap-2 hover:underline"
+                      >
+                        <Instagram size={16} />
+                        <span>
+                          {selectedTalent.igAccount.startsWith("@")
+                            ? selectedTalent.igAccount
+                            : `@${selectedTalent.igAccount}`}
+                        </span>
+                      </a>
+                    ) : (
+                      <p className="text-sm font-bold text-slate-300">-</p>
+                    )}
                   </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.igAccount 
-                      ? (selectedTalent.igAccount.startsWith('@') 
-                          ? selectedTalent.igAccount 
-                          : `@${selectedTalent.igAccount}`)
-                      : "-"}
-                  </p>
-                </div>
-
-                {/* No. HP */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Phone size={18} className="text-purple-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      No. HP
-                    </span>
-                  </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.contactPerson || "-"}
-                  </p>
-                </div>
-
-                {/* Suku */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Users size={18} className="text-orange-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Suku
-                    </span>
-                  </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.suku || "-"}
-                  </p>
-                </div>
-
-                {/* Agama */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Heart size={18} className="text-red-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Agama
-                    </span>
-                  </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.agama || "-"}
-                  </p>
-                </div>
-
-                {/* Alasan Jadi Talent */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 md:col-span-2">
-                  <div className="flex items-center gap-3 mb-2">
-                    <AlertCircle size={18} className="text-indigo-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <p className="text-[9px] font-bold text-slate-700 uppercase mb-1">
                       Alasan Jadi Talent
-                    </span>
+                    </p>
+                    <p className="text-sm font-bold text-slate-700">
+                      {selectedTalent.alasan || "-"}
+                    </p>
                   </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.alasan || "-"}
-                  </p>
                 </div>
-
-                {/* Hobby */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Heart size={18} className="text-pink-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Hobby
-                    </span>
-                  </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.hobby || "-"}
-                  </p>
-                </div>
-
-                {/* Umur */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Cake size={18} className="text-yellow-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Umur
-                    </span>
-                  </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.umur ? `${selectedTalent.umur} tahun` : "-"}
-                  </p>
-                </div>
-
-                {/* Pekerjaan */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Briefcase size={18} className="text-cyan-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Pekerjaan
-                    </span>
-                  </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.pekerjaan || "-"}
-                  </p>
-                </div>
-
-                {/* Status */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <div className="flex items-center gap-3 mb-2">
-                    <AlertCircle size={18} className="text-emerald-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Status
-                    </span>
-                  </div>
-                  <span
-                    className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusBadgeStyle(
-                      selectedTalent.status
-                    )}`}
-                  >
-                    {selectedTalent.status || "Unknown"}
-                  </span>
-                </div>
-
-                {/* Universitas / Tempat Kuliah */}
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 md:col-span-2">
-                  <div className="flex items-center gap-3 mb-2">
-                    <GraduationCap size={18} className="text-blue-600" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Universitas / Tempat Kuliah
-                    </span>
-                  </div>
-                  <p className="text-base font-medium text-gray-900">
-                    {selectedTalent.tempatKuliah || "-"}
-                  </p>
-                </div>
-
               </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end gap-3 border-t border-gray-200">
-              <button
-                onClick={() => {
-                  setDetailModalOpen(false);
-                  setSelectedTalent(null);
-                }}
-                className="px-5 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors font-medium text-gray-700"
-              >
-                Tutup
-              </button>
-              <button
-                onClick={() => {
-                  handleEdit(selectedTalent);
-                  setDetailModalOpen(false);
-                  setSelectedTalent(null);
-                }}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
-              >
-                <Pencil size={16} />
-                Edit Data
-              </button>
             </div>
           </div>
         </div>

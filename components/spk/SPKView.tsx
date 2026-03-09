@@ -82,11 +82,14 @@ interface FormDataType {
   campaign_period: string;
   collab_nature: "Eksklusif" | "Non-Eksklusif";
 
-  // Section IV: Scope of Work (Talents & SOWs)
-  [key: string]: string; // Dynamic fields: talent_name1-5, sow1-10, dll
+  // Section IV: Scope of Work (Talents as Array with unique IDs)
+  talents: Array<{ id: string; name: string }>;
+  
+  // Section IV: SOWs - Keep dynamic for now as SOW structure is more complex
+  [key: string]: any; // Dynamic fields for sow1-10, etc
 
-  // Section V: Competitors (1-10)
-  // competitor1-10 generated dynamically
+  // Section V: Competitors (Array with unique IDs)
+  competitors: Array<{ id: string; name: string }>;
 
   // Section VI: Payment & Bank
   project_fee: string;
@@ -118,9 +121,20 @@ export default function SPKView({
 
   // === UI State ===
   const [openActionId, setOpenActionId] = useState<string | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("spk_form_open") === "true";
+    }
+    return false;
+  });
   const [isLoading, setIsLoading] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | number | null>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("spk_editing_id");
+      return saved || null;
+    }
+    return null;
+  });
 
   // === Filter & Pagination State ===
   const [searchQuery, setSearchQuery] = useState("");
@@ -145,6 +159,9 @@ export default function SPKView({
     item: null,
   });
   const [confirmText, setConfirmText] = useState("");
+
+  // === Exit Confirmation Modal State ===
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // === Form Data State ===
   const initialSows = generateInitialSows();
@@ -173,11 +190,11 @@ export default function SPKView({
     collab_nature: "Eksklusif",
 
     // Section IV: Scope of Work
-    ...initialTalents,
+    talents: initialTalents,
     ...initialSows,
 
     // Section V: Competitors
-    ...initialCompetitors,
+    competitors: initialCompetitors,
 
     // Section VI: Payment & Bank
     project_fee: "",
@@ -206,8 +223,19 @@ export default function SPKView({
    * Digunakan saat:
    * - Menutup form
    * - Membuka form create baru (agar data edit tidak nyangkut)
+   * 
+   * Cleaned up localStorage keys:
+   * - spk_form_draft: Simpan formData
+   * - spk_editing_id: Simpan ID yang sedang diedit
+   * - spk_active_talent/sow/comp: Simpan counter
    */
   const resetForm = () => {
+    localStorage.removeItem("spk_form_draft");
+  localStorage.removeItem("spk_editing_id");
+  localStorage.removeItem("spk_active_talent");
+  localStorage.removeItem("spk_active_sow");
+  localStorage.removeItem("spk_active_comp");
+  localStorage.removeItem("spk_form_open");
     setEditingId(null);
     setFormData({
       first_party_signer: "",
@@ -224,9 +252,9 @@ export default function SPKView({
       campaign_end: "",
       campaign_period: "",
       collab_nature: "Eksklusif",
-      ...initialTalents,
+      talents: generateInitialTalents(),
       ...initialSows,
-      ...initialCompetitors,
+      competitors: generateInitialCompetitors(),
       project_fee: "",
       pph_23: "",
       grand_total: "",
@@ -245,9 +273,85 @@ export default function SPKView({
     setSowIds([Date.now()]);
   };
 
+/**
+ * ============================================
+ * HYDRATION SYSTEM (AUTO-LOAD DRAFT)
+ * ============================================
+ * Saat component pertama kali mount, cek apakah ada draft di localStorage
+ * Jika ada, restore formData, counters, dan editingId
+ * Jalankan hanya 1x saat component mount
+ */
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  const savedDraft = localStorage.getItem("spk_form_draft");
+  const savedEditingId = localStorage.getItem("spk_editing_id");
+
+  if (savedDraft) {
+    try {
+      const parsed = JSON.parse(savedDraft);
+      if (Object.keys(parsed).length > 0) {
+        console.log("✓ Draft ditemukan, melakukan restore...");
+        
+        // Convert flat structure to array structure if needed
+        if (!parsed.talents || !Array.isArray(parsed.talents)) {
+          const talentsArray: Array<{ id: string; name: string }> = [];
+          for (let i = 1; i <= 5; i++) {
+            const talentName = parsed[`talent_name${i}`];
+            if (talentName && talentName.trim() !== "") {
+              talentsArray.push({ id: crypto.randomUUID(), name: talentName });
+            }
+          }
+          if (talentsArray.length === 0) {
+            talentsArray.push({ id: crypto.randomUUID(), name: "" });
+          }
+          parsed.talents = talentsArray;
+        }
+
+        if (!parsed.competitors || !Array.isArray(parsed.competitors)) {
+          const competitorsArray: Array<{ id: string; name: string }> = [];
+          for (let i = 1; i <= 10; i++) {
+            const compName = parsed[`competitor${i}`];
+            if (compName && compName.trim() !== "") {
+              competitorsArray.push({ id: crypto.randomUUID(), name: compName });
+            }
+          }
+          if (competitorsArray.length === 0) {
+            competitorsArray.push({ id: crypto.randomUUID(), name: "" });
+          }
+          parsed.competitors = competitorsArray;
+        }
+        
+        // Restore formData
+        setFormData(parsed);
+        
+        // Restore counters - derive from arrays if available
+        setActiveTalentCount(parsed.talents?.length || 1);
+        setActiveCompetitorCount(parsed.competitors?.length || 1);
+        
+        const sowCount = localStorage.getItem("spk_active_sow");
+        if (sowCount) setActiveSowCount(Number(sowCount));
+        
+        // Restore editingId jika ada (keep as string untuk nomor SPK)
+        if (savedEditingId) {
+          setEditingId(savedEditingId);
+        }
+        
+        // Buka form otomatis
+        setIsFormOpen(true);
+        
+        console.log("✓ Draft berhasil di-restore: form terbuka kembali");
+      }
+    } catch (error) {
+      console.error("Failed to parse draft:", error);
+    }
+  }
+}, []); // Jalankan sekali saat mount
+
   /**
    * handleChange - Handle input change untuk semua field
    * Special handling untuk field uang (remove non-digits)
+   * Note: Auto-save to localStorage dilakukan di useEffect terpisah
    */
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -259,9 +363,100 @@ export default function SPKView({
         ...prev,
         [name]: cleanValue,
       }));
+    } else if (name === "collab_nature" && value === "Non-Eksklusif") {
+      // Jika user memilih "Non-Eksklusif", kosongkan competitor array
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        competitors: [{ id: crypto.randomUUID(), name: "" }],
+      }));
+      // Reset competitor count to 1
+      setActiveCompetitorCount(1);
     } else {
       // Field lainnya normal
       setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  /**
+   * handleTalentChange - Update talent name by ID
+   * @param {string} id - Unique ID of the talent
+   * @param {string} value - New name value
+   */
+  const handleTalentChange = (id: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      talents: prev.talents.map((talent) =>
+        talent.id === id ? { ...talent, name: value } : talent
+      ),
+    }));
+  };
+
+  /**
+   * handleAddTalent - Add new talent (max 5)
+   */
+  const handleAddTalent = () => {
+    if (formData.talents.length < 5) {
+      setFormData((prev) => ({
+        ...prev,
+        talents: [...prev.talents, { id: crypto.randomUUID(), name: "" }],
+      }));
+      setActiveTalentCount((prev) => prev + 1);
+    }
+  };
+
+  /**
+   * handleRemoveTalent - Remove talent by ID
+   * @param {string} id - Unique ID of the talent to remove
+   */
+  const handleRemoveTalent = (id: string) => {
+    if (formData.talents.length > 1) {
+      setFormData((prev) => ({
+        ...prev,
+        talents: prev.talents.filter((talent) => talent.id !== id),
+      }));
+      setActiveTalentCount((prev) => prev - 1);
+    }
+  };
+
+  /**
+   * handleCompetitorChange - Update competitor name by ID
+   * @param {string} id - Unique ID of the competitor
+   * @param {string} value - New name value
+   */
+  const handleCompetitorChange = (id: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      competitors: prev.competitors.map((comp) =>
+        comp.id === id ? { ...comp, name: value } : comp
+      ),
+    }));
+  };
+
+  /**
+   * handleAddCompetitor - Add new competitor (max 10)
+   */
+  const handleAddCompetitor = () => {
+    if (formData.competitors.length < 10) {
+      setFormData((prev) => ({
+        ...prev,
+        competitors: [...prev.competitors, { id: crypto.randomUUID(), name: "" }],
+      }));
+      setActiveCompetitorCount((prev) => prev + 1);
+    }
+  };
+
+  /**
+   * handleRemoveCompetitor - Remove competitor by ID
+   * @param {string} id - Unique ID of the competitor to remove
+   */
+  const handleRemoveCompetitor = (id: string) => {
+    if (formData.competitors.length > 1) {
+      setFormData((prev) => ({
+        ...prev,
+        competitors: prev.competitors.filter((comp) => comp.id !== id),
+      }));
+      setActiveCompetitorCount((prev) => prev - 1);
     }
   };
 
@@ -376,7 +571,11 @@ export default function SPKView({
    * 4. Set form open
    */
   const handleOpenEdit = (item: any) => {
-    setEditingId(item.spk_number || item.number);
+const idToEdit = item.spk_number || item.number;
+  setEditingId(idToEdit);
+
+  localStorage.setItem("spk_editing_id", idToEdit.toString());
+  localStorage.setItem("spk_form_open", "true");
 
     // ===== STEP 1: Parse Campaign Period =====
     const period = item.campaign_period || "";
@@ -397,20 +596,8 @@ export default function SPKView({
     }
 
     // ===== STEP 2: Detect Active Row Counts =====
-    let lastTalentIndex = 1;
-    for (let i = 1; i <= 5; i++) {
-      if (item[`talent_name${i}`] && item[`talent_name${i}`] !== "")
-        lastTalentIndex = i;
-    }
-    setActiveTalentCount(lastTalentIndex);
-
-    let lastCompIndex = 1;
-    for (let i = 1; i <= 10; i++) {
-      if (item[`competitor${i}`] && item[`competitor${i}`] !== "")
-        lastCompIndex = i;
-    }
-    setActiveCompetitorCount(lastCompIndex);
-
+    // For talents and competitors, count from arrays after conversion
+    
     let lastSowIndex = 1;
     for (let i = 1; i <= 10; i++) {
       if (item[`sow${i}`] && item[`sow${i}`] !== "") lastSowIndex = i;
@@ -444,30 +631,41 @@ export default function SPKView({
       {},
     );
 
-    const talentData = Array.from({ length: 5 }).reduce<Record<string, string>>(
-      (acc, _, i) => {
-        const n = i + 1;
-        acc[`talent_name${n}`] = item[`talent_name${n}`] || "";
-        return acc;
-      },
-      {},
-    );
+    // Convert flat talent structure to array with IDs
+    const talentsArray: Array<{ id: string; name: string }> = [];
+    for (let i = 1; i <= 5; i++) {
+      const talentName = item[`talent_name${i}`];
+      if (talentName && talentName.trim() !== "") {
+        talentsArray.push({ id: crypto.randomUUID(), name: talentName });
+      }
+    }
+    // Ensure at least one empty talent
+    if (talentsArray.length === 0) {
+      talentsArray.push({ id: crypto.randomUUID(), name: "" });
+    }
+    setActiveTalentCount(talentsArray.length);
 
-    const competitorData = Array.from({ length: 10 }).reduce<
-      Record<string, string>
-    >((acc, _, i) => {
-      const n = i + 1;
-      acc[`competitor${n}`] = item[`competitor${n}`] || "";
-      return acc;
-    }, {});
+    // Convert flat competitor structure to array with IDs
+    const competitorsArray: Array<{ id: string; name: string }> = [];
+    for (let i = 1; i <= 10; i++) {
+      const compName = item[`competitor${i}`];
+      if (compName && compName.trim() !== "") {
+        competitorsArray.push({ id: crypto.randomUUID(), name: compName });
+      }
+    }
+    // Ensure at least one empty competitor
+    if (competitorsArray.length === 0) {
+      competitorsArray.push({ id: crypto.randomUUID(), name: "" });
+    }
+    setActiveCompetitorCount(competitorsArray.length);
 
     // ===== STEP 5: Set Form Data (Order Matters!) =====
     setFormData({
       ...formData,
       ...resetData, // FORCE kosong dulu
-      ...talentData, // Fill talent dari DB
+      talents: talentsArray, // Fill talent array dari DB
       ...sowData, // Fill SOW dari DB
-      ...competitorData, // Fill competitor dari DB
+      competitors: competitorsArray, // Fill competitor array dari DB
       first_party_signer: item.first_party_signer || "",
       first_party_position: item.first_party_position || "",
       vendor_name: item.vendor_name || "",
@@ -524,22 +722,31 @@ export default function SPKView({
 
       // ===== STEP 2: Build Competitor Text =====
       const activeCompetitorsList = [];
-      for (let i = 1; i <= 10; i++) {
-        const val = formData[`competitor${i}` as keyof FormDataType];
-        if (
-          i <= activeCompetitorCount &&
-          val &&
-          (val as string).trim() !== ""
-        ) {
-          activeCompetitorsList.push((val as string).trim());
+      // Support both new array structure and old flat structure
+      if (formData.competitors && Array.isArray(formData.competitors)) {
+        formData.competitors.forEach((comp: any) => {
+          if (comp.name && comp.name.trim() !== "") {
+            activeCompetitorsList.push(comp.name.trim());
+          }
+        });
+      } else {
+        // Fallback for old structure
+        for (let i = 1; i <= 10; i++) {
+          const val = formData[`competitor${i}` as keyof FormDataType];
+          if (
+            i <= activeCompetitorCount &&
+            val &&
+            (val as string).trim() !== ""
+          ) {
+            activeCompetitorsList.push((val as string).trim());
+          }
         }
       }
       const listCompetitorText = activeCompetitorsList.join(", ");
 
       // ===== STEP 3: Collab Nature Text =====
       const eksklusifText = `Eksklusif`;
-      const nonEksklusifText =
-        "Non Eksklusif"
+      const nonEksklusifText = "Non Eksklusif";
       // ===== STEP 4: Build Payload =====
       const payload: any = {
         // Section I: Company Identity
@@ -605,21 +812,47 @@ export default function SPKView({
       }
 
       // ===== STEP 6: Add Active Talents =====
-      for (let i = 1; i <= 5; i++) {
-        const val = formData[`talent_name${i}` as keyof FormDataType];
-        payload[`talent_name${i}`] =
-          i <= activeTalentCount && val && (val as string).trim() !== ""
-            ? val
-            : null;
+      // Convert new array structure to flat structure for API
+      if (formData.talents && Array.isArray(formData.talents)) {
+        formData.talents.forEach((talent: any, index: number) => {
+          const i = index + 1;
+          payload[`talent_name${i}`] = talent.name && talent.name.trim() !== "" ? talent.name : null;
+        });
+        // Fill remaining slots with null
+        for (let i = formData.talents.length + 1; i <= 5; i++) {
+          payload[`talent_name${i}`] = null;
+        }
+      } else {
+        // Fallback for old structure
+        for (let i = 1; i <= 5; i++) {
+          const val = formData[`talent_name${i}` as keyof FormDataType];
+          payload[`talent_name${i}`] =
+            i <= activeTalentCount && val && (val as string).trim() !== ""
+              ? val
+              : null;
+        }
       }
 
       // ===== STEP 7: Add Active Competitors =====
-      for (let i = 1; i <= 10; i++) {
-        const val = formData[`competitor${i}` as keyof FormDataType];
-        payload[`competitor${i}`] =
-          i <= activeCompetitorCount && val && (val as string).trim() !== ""
-            ? val
-            : null;
+      // Convert new array structure to flat structure for API
+      if (formData.competitors && Array.isArray(formData.competitors)) {
+        formData.competitors.forEach((comp: any, index: number) => {
+          const i = index + 1;
+          payload[`competitor${i}`] = comp.name && comp.name.trim() !== "" ? comp.name : null;
+        });
+        // Fill remaining slots with null
+        for (let i = formData.competitors.length + 1; i <= 10; i++) {
+          payload[`competitor${i}`] = null;
+        }
+      } else {
+        // Fallback for old structure
+        for (let i = 1; i <= 10; i++) {
+          const val = formData[`competitor${i}` as keyof FormDataType];
+          payload[`competitor${i}`] =
+            i <= activeCompetitorCount && val && (val as string).trim() !== ""
+              ? val
+              : null;
+        }
       }
 
       console.log("📤 FINAL PAYLOAD:", payload);
@@ -650,6 +883,43 @@ export default function SPKView({
       setIsLoading(false);
     }
   };
+  /**
+   * ============================================
+   * PERSISTENCE SYSTEM (AUTO-SAVE DRAFT)
+   * ============================================
+   * Setiap kali formData atau counters berubah, simpan ke localStorage
+   * Key: 'spk_form_draft' untuk formData
+   * Dilakukan dengan debounce 500ms untuk performance
+   */
+  useEffect(() => {
+    if (!isFormOpen) return; // Jangan save jika form tidak terbuka
+
+    const timeoutId = setTimeout(() => {
+      if (typeof window !== "undefined") {
+        try {
+          // Save formData
+          localStorage.setItem("spk_form_draft", JSON.stringify(formData));
+          
+          // Save counters
+          localStorage.setItem("spk_active_talent", activeTalentCount.toString());
+          localStorage.setItem("spk_active_sow", activeSowCount.toString());
+          localStorage.setItem("spk_active_comp", activeCompetitorCount.toString());
+          
+          // Save editingId
+          if (editingId) {
+            localStorage.setItem("spk_editing_id", editingId.toString());
+          }
+          
+          console.log("✓ Draft tersimpan otomatis ke localStorage");
+        } catch (error) {
+          console.error("Failed to save draft:", error);
+        }
+      }
+    }, 500); // Debounce 500ms
+
+    // Cleanup: clear timeout jika component unmount atau deps berubah
+    return () => clearTimeout(timeoutId);
+  }, [formData, activeTalentCount, activeSowCount, activeCompetitorCount, editingId, isFormOpen]);
 
   /**
    * ============================================
@@ -741,22 +1011,33 @@ export default function SPKView({
   if (isFormOpen) {
     return (
       <div className="animate-in slide-in-from-right duration-500 pb-20">
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => {
-              setIsFormOpen(false);
-              resetForm();
-            }}
-            className="p-2 hover:bg-slate-100 rounded-full transition-all"
-            title="Back to list"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <h2 className="text-2xl font-bold text-[#1B3A5B]">
-            {editingId ? `Edit SPK ${editingId}` : "Buat SPK Baru"}
-          </h2>
+        {/* ============================================ */}
+        {/* FORM HEADER */}
+        {/* ============================================ */}
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowExitModal(true)}
+              className="p-2 hover:bg-slate-100 rounded-full transition-all"
+              title="Back to list"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <div>
+              <h2 className="text-2xl font-bold text-[#1B3A5B]">
+                {editingId ? `Edit SPK - ${editingId}` : "Buat SPK Baru"}
+              </h2>
+              {/* UI Feedback: Draft tersimpan otomatis */}
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                ✓ Draft tersimpan otomatis
+              </p>
+            </div>
+          </div>
         </div>
 
+        {/* ============================================ */}
+        {/* FORM COMPONENT */}
+        {/* ============================================ */}
         <SPKForm
           formData={formData}
           onChange={handleChange}
@@ -765,13 +1046,69 @@ export default function SPKView({
           editingId={editingId}
           activeTalentCount={activeTalentCount}
           setActiveTalentCount={setActiveTalentCount}
+          onTalentChange={handleTalentChange}
+          onAddTalent={handleAddTalent}
+          onRemoveTalent={handleRemoveTalent}
           activeSowCount={activeSowCount}
           sowIds={sowIds}
           onAddSow={handleAddSow}
           onRemoveSow={handleRemoveSpecificSow}
           activeCompetitorCount={activeCompetitorCount}
           setActiveCompetitorCount={setActiveCompetitorCount}
+          onCompetitorChange={handleCompetitorChange}
+          onAddCompetitor={handleAddCompetitor}
+          onRemoveCompetitor={handleRemoveCompetitor}
         />
+
+        {/* ============================================ */}
+        {/* EXIT CONFIRMATION MODAL */}
+        {/* ============================================ */}
+        {showExitModal && (
+          <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+            {/* Modal Container */}
+            <div className="bg-white rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+              <div className="p-8 space-y-6">
+                {/* Modal Header */}
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-amber-50 rounded-2xl">
+                    <ChevronLeft size={24} className="text-amber-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#1B3A5B]">
+                    Keluar dari Form?
+                  </h3>
+                </div>
+
+                {/* Warning Message */}
+                <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl">
+                  <p className="text-amber-800 text-sm leading-relaxed">
+                    Draft yang belum disimpan akan dihapus secara permanen. 
+                    Pastikan Anda sudah menyimpan perubahan sebelum keluar.
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowExitModal(false)}
+                    className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all"
+                  >
+                    Tetap di Sini
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowExitModal(false);
+                      setIsFormOpen(false);
+                      resetForm();
+                    }}
+                    className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all"
+                  >
+                    Ya, Keluar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

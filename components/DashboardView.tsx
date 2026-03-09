@@ -266,26 +266,32 @@ export default function DashboardView({
             </div>
           </div>
 
-          {/* Card 2: Talent Availability */}
+{/* Card 2: Data Distribution (Talent vs Influencer) */}
           <div className="flex flex-col justify-center h-full">
             <div className="flex items-center w-full">
-              <div className=" bg-white rounded-2xl border-slate-100 p-6 shadow-sm flex-1 flex flex-col items-center">
-                <span className="text-2xl font-black text-slate-800 mb-2">
-                  {activeCount}
-                </span>
-                <span className="text-[10px] font-bold uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  Active
-                </span>
-              </div>
-              <div className="w-px h-10 bg-slate-100 mx-4 shrink-0" />
+                            {/* Box Influencer */}
               <div className="bg-white rounded-2xl border-slate-100 p-6 shadow-sm flex-1 flex flex-col items-center">
                 <span className="text-2xl font-black text-slate-800 mb-2">
-                  {inactiveCount}
+                  {talents.filter(t => 
+                    t.source?.toLowerCase() === "influencer/kol" || 
+                    t.source?.toLowerCase() === "artist/celebrity"
+                  ).length}
                 </span>
-                <span className="text-[10px] font-bold uppercase text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
-                  Inactive
+                <span className="text-[10px] font-bold uppercase text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md">
+                  Influencer
                 </span>
               </div>
+              {/* Box Talent */}
+              <div className="bg-white rounded-2xl border-slate-100 p-6 shadow-sm flex-1 flex flex-col items-center">
+                <span className="text-2xl font-black text-slate-800 mb-2">
+                  {talents.filter(t => t.source?.toLowerCase() === "talent").length}
+                </span>
+                <span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                  Talent
+                </span>
+              </div>
+
+              <div className="w-px h-10 bg-slate-100 mx-4 shrink-0" />
             </div>
           </div>
         </div>

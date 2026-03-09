@@ -197,31 +197,17 @@ export const generateInitialSows = (): { [key: string]: string } => {
 };
 
 /**
- * generateInitialTalents - Generate initial Talent state (1-5)
- * @returns {Object} Object dengan key format: talent_name1, talent_name2, dst
+ * generateInitialTalents - Generate initial Talent state as array of objects with unique IDs
+ * @returns {Array} Array of talent objects with id and name
  */
-export const generateInitialTalents = (): { [key: string]: string } => {
-  return Array.from({ length: 5 }).reduce(
-    (acc: { [key: string]: string }, _, i) => {
-      const n = i + 1;
-      acc[`talent_name${n}`] = "";
-      return acc;
-    },
-    {}
-  );
+export const generateInitialTalents = (): Array<{ id: string; name: string }> => {
+  return [{ id: crypto.randomUUID(), name: "" }];
 };
 
 /**
- * generateInitialCompetitors - Generate initial Competitor state (1-10)
- * @returns {Object} Object dengan key format: competitor1, competitor2, dst
+ * generateInitialCompetitors - Generate initial Competitor state as array of objects with unique IDs
+ * @returns {Array} Array of competitor objects with id and name
  */
-export const generateInitialCompetitors = (): { [key: string]: string } => {
-  return Array.from({ length: 10 }).reduce(
-    (acc: { [key: string]: string }, _, i) => {
-      const n = i + 1;
-      acc[`competitor${n}`] = "";
-      return acc;
-    },
-    {}
-  );
+export const generateInitialCompetitors = (): Array<{ id: string; name: string }> => {
+  return [{ id: crypto.randomUUID(), name: "" }];
 };

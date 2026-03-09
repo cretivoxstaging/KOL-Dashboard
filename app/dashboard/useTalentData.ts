@@ -20,6 +20,14 @@ export function useTalentData() {
   const [sortBy, setSortBy] = useState("update-desc");
   const [spkList, setSpkList] = useState<any[]>([]);
 
+  const resolveApiStatus = (item: any) => {
+    const rawStatus =
+      item?.talent_status ?? item?.status ?? item?.talentStatus ?? "";
+
+    if (rawStatus === null || rawStatus === undefined) return "";
+    return String(rawStatus).trim();
+  };
+
   const fetchSPK = async () => {
     try {
       const response = await fetch("/api/spk");
@@ -37,14 +45,14 @@ export function useTalentData() {
 
   const getInitialTab = () => {
     const t = searchParams.get("tab");
-    if (t === "dashboard" || t === "talent" || t === "tax" || t === "SPK") {
-      return t as "dashboard" | "talent" | "tax" | "SPK";
+    if (t === "dashboard" || t === "talent" || t === "talent-list" || t === "influencer" || t === "tax" || t === "SPK") {
+      return t as "dashboard" | "talent" | "talent-list" | "influencer" | "tax" | "SPK";
     }
     return "dashboard";
   };
 
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "talent" | "tax" | "SPK"
+    "dashboard" | "talent" | "talent-list" | "influencer" | "tax" | "SPK"
   >(getInitialTab());
 
   const getTimestamp = (dateString?: string) => {
@@ -72,8 +80,10 @@ export function useTalentData() {
         t.igAccount?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchReligion =
         selectedReligion === "All" || t.agama === selectedReligion;
+      const currentStatus = String(t.status || "").trim().toLowerCase();
+      const selectedStatusNormalized = selectedStatus.trim().toLowerCase();
       const matchStatus =
-        selectedStatus === "All" || t.status === selectedStatus;
+        selectedStatus === "All" || currentStatus === selectedStatusNormalized;
       const matchTier = () => {
         if (selectedTier === "All") return true;
         if (selectedTier.startsWith("IG:")) {
@@ -202,7 +212,7 @@ export function useTalentData() {
             zodiac: t.zodiac,
             tempatKuliah: t.university,
             category: t.category || "Uncategorized",
-            status: t.status === "active" ? "Active" : "Inactive",
+            status: resolveApiStatus(t),
             monthlyImpressions: t.monthly_impressions || [
               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ],

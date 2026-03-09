@@ -30,6 +30,7 @@ interface TalentDetailModalProps {
   getSourceStyle: (source: string) => string;
   onUpdate: (talent: Talent) => void;
   setTalentToDelete: (talent: Talent) => void;
+  hideStatus?: boolean;
 }
 
 const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
@@ -37,6 +38,7 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
   setSelectedDetail,
   formatDate,
   getSourceStyle,
+  hideStatus = false,
 }) => {
   if (!selectedDetail) return null;
   return (
@@ -72,15 +74,17 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
                   <span className="px-2 py-0.5 bg-slate-100 text-[#1B3A5B] text-[10px] font-bold rounded-md uppercase tracking-wider">
                     {selectedDetail.category}
                   </span>
-                  <span
-                    className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${
-                      selectedDetail.status === "Active"
-                        ? "bg-green-100 text-green-600"
-                        : "bg-orange-100 text-orange-600"
-                    }`}
-                  >
-                    {selectedDetail.status}
-                  </span>
+                  {!hideStatus && (
+                    <span
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${
+                        selectedDetail.status === "Available"
+                          ? "bg-green-100 text-green-600"
+                          : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {selectedDetail.status}
+                    </span>
+                  )}
                   <Clock size={12} />
                   <span className="text-[10px] font-medium">
                     Last updated: {formatDate(selectedDetail.last_update)}

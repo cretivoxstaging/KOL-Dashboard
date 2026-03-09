@@ -1,29 +1,22 @@
 /**
  * ============================================
- * ADD TALENT MODAL - FORM COMPONENT
+ * TALENT FORM COMPONENT
  * ============================================
  * 
- * Modal untuk menambahkan talent baru atau edit talent yang sudah ada
+ * Form khusus untuk menambah/edit Talent
+ * Source SELALU hardcoded ke "talent"
  * 
- * Fitur:
- * - Dynamic form dengan 15+ fields (text, url, select, date)
- * - Client-side validation
- * - Loading state saat submit
- * - Success/error handling
- * - Auto-clear form setelah submit
- * 
- * Fields:
- * - Profile: full_name, source, instagram, tiktok, twitter, youtube, etc
- * - Demographics: jenis_kelamin, umur, agama, domisili
- * - Status: tier, status, follower
- * - Metadata: username, hp, email, bank_account
+ * Perbedaan dari AddTalentModal:
+ * - Tidak ada source dropdown di form
+ * - Source otomatis di-set ke "talent" saat submit
+ * - UI disesuaikan dengan label "Talent" bukan generic "Talent/Influencer"
  */
 
 "use client";
 import React, { useState, useEffect } from "react";
 import { X, User, Share2, Briefcase, Heart } from "lucide-react";
 
-export default function AddTalentModal({
+export default function TalentForm({
   onClose,
   onSave,
   initialData,
@@ -53,7 +46,7 @@ export default function AddTalentModal({
     tier_ig: "Nano",
     tier_tiktok: "Nano",
     er: "0%",
-    source: "Artist/Celebrity",
+    source: "talent", // HARDCODED - tidak akan diubah oleh user
     color: "#1B4D66",
     monthlyImpressions: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     rateCard: "",
@@ -74,34 +67,28 @@ export default function AddTalentModal({
     "Other",
   ];
 
-  const calculateTier = (followers: number) => {
-    if (followers >= 1000000) return "Mega";
-    if (followers >= 100000) return "Macro";
-    if (followers >= 10000) return "Micro";
-    return "Nano";
-  };
   const [isSyncing, setIsSyncing] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
-useEffect(() => {
-  if (!initialData || Object.keys(initialData).length === 0) return;
+  useEffect(() => {
+    if (!initialData || Object.keys(initialData).length === 0) return;
 
-  setFormData({
-    ...initialData,
-    tier_ig: initialData.tier_ig || initialData.tier || "Nano",
-    tier_tiktok: initialData.tier_tiktok || "Nano",
-    er: initialData.er || "0%",
-    source: initialData.source || "Artist/Celebrity",
-    domisili: initialData.domisili || "",
-    igAccount: initialData.igAccount || "",
-    status: initialData.status || "Active",
-    youtube_username: initialData.youtube_username || "",
-    youtube_subscriber: initialData.youtube_subscriber ?? "",
-    email: initialData.email || "",
-    hijab: initialData.hijab || "no",
-    gender: initialData.gender || "",
-  });
-}, [initialData]);
+    setFormData({
+      ...initialData,
+      tier_ig: initialData.tier_ig || initialData.tier || "Nano",
+      tier_tiktok: initialData.tier_tiktok || "Nano",
+      er: initialData.er || "0%",
+      source: "talent", // SELALU talent, meskipun initialData punya source lain
+      domisili: initialData.domisili || "",
+      igAccount: initialData.igAccount || "",
+      status: initialData.status || "Active",
+      youtube_username: initialData.youtube_username || "",
+      youtube_subscriber: initialData.youtube_subscriber ?? "",
+      email: initialData.email || "",
+      hijab: initialData.hijab || "no",
+      gender: initialData.gender || "",
+    });
+  }, [initialData]);
 
   const handleSubmit = async () => {
     if (!formData.name) return alert("Nama wajib diisi!");
@@ -111,10 +98,8 @@ useEffect(() => {
     const oldUsername = initialData?.igAccount?.replace("@", "").trim();
 
     // CEK: Apakah username-nya berubah?
-    // Kalau berubah DAN tidak kosong, baru kita nembak API
     if (newUsername && newUsername !== oldUsername) {
       setIsSyncing(true);
-      console.log("Username berubah! Nembak API IG untuk:", newUsername);
 
       try {
         const syncRes = await fetch(
@@ -125,6 +110,7 @@ useEffect(() => {
         if (syncData.success) {
           const updatedData = {
             ...formData,
+            source: "talent", // HARDCODED
             igFollowers: syncData.followers,
             tier_ig: syncData.tier,
             er: syncData.er,
@@ -139,11 +125,15 @@ useEffect(() => {
         setIsSyncing(false);
       }
     } else {
-      // Kalau username-nya SAMA atau KOSONG, langsung save aja tanpa nembak API
-      console.log("Username tidak berubah, langsung save.");
-      onSave(formData);
+      // Langsung save dengan source hardcoded
+      const dataToSave = {
+        ...formData,
+        source: "talent", // HARDCODED
+      };
+      onSave(dataToSave);
     }
   };
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-100 p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-[15px] w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
@@ -238,7 +228,7 @@ useEffect(() => {
                 </select>
               </div>
               <Input
-                label="domicile"
+                label="Domicile"
                 value={formData.domisili}
                 placeholder="Jakarta"
                 onChange={(v: string) =>
@@ -265,7 +255,6 @@ useEffect(() => {
                     setFormData({
                       ...formData,
                       gender: selectedGender,
-                      // Jika pilih Laki-laki, otomatis set hijab ke "no"
                       hijab:
                         selectedGender === "Laki-laki" ? "no" : formData.hijab,
                     });
@@ -288,7 +277,7 @@ useEffect(() => {
                       : ""
                   }`}
                   value={formData.hijab}
-                  disabled={formData.gender === "Laki-laki"} // Lock kalau laki-laki
+                  disabled={formData.gender === "Laki-laki"}
                   onChange={(e) =>
                     setFormData({ ...formData, hijab: e.target.value })
                   }
@@ -296,9 +285,6 @@ useEffect(() => {
                   <option value="no">No</option>
                   <option value="yes">Yes</option>
                 </select>
-                {formData.gender === "Laki-laki" && (
-                  <p className="text-[10px] text-slate-400 italic"></p>
-                )}
               </div>
             </div>
           </section>
@@ -321,7 +307,7 @@ useEffect(() => {
                 }
               />
               <Input
-                label="college"
+                label="College"
                 value={formData.tempatKuliah}
                 placeholder="Universitas..."
                 onChange={(v: string) =>
@@ -435,8 +421,9 @@ useEffect(() => {
                 />
               </div>
             )}
-            {/* LANJUTAN SECTION 3: STATUS & SOURCE */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-50">
+
+            {/* STATUS FIELD ONLY */}
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4 pt-4 border-t border-slate-50">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                   Status Talent
@@ -452,22 +439,8 @@ useEffect(() => {
                   <option value="Inactive">Inactive</option>
                 </select>
               </div>
-
-              <Select
-                label="Source"
-                value={formData.source}
-                options={[
-                  "Artist/Celebrity",
-                  "Influencer/KOL",
-                  "Talent",
-                  "Media",
-                  "Clippers",
-                ]}
-                onChange={(v: string) =>
-                  setFormData({ ...formData, source: v })
-                }
-              />
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="Contact Person (WA)"
@@ -520,7 +493,6 @@ useEffect(() => {
 }
 
 function Input({ label, type = "text", placeholder, value, onChange }: any) {
-  // Proteksi mutlak agar tidak mengirim NaN atau null ke atribut value
   const displayValue =
     value === null || value === undefined || (type === "number" && isNaN(value))
       ? ""
@@ -538,31 +510,6 @@ function Input({ label, type = "text", placeholder, value, onChange }: any) {
         onChange={(e) => onChange(e.target.value)}
         className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-black bg-white"
       />
-    </div>
-  );
-}
-
-function Select({ label, options, value, onChange }: any) {
-  // Pastikan value tidak undefined/null agar select tidak 'uncontrolled'
-  const safeValue = value || options[0] || ""; 
-
-  return (
-    <div>
-      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-        {label}
-      </label>
-      <select
-        value={safeValue}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm outline-none bg-white text-black"
-      >
-        {/* Tambahin option kosong/default jika perlu */}
-        {options.map((opt: string) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
     </div>
   );
 }

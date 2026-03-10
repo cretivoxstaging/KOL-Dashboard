@@ -108,12 +108,12 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#E9EDF0]">
+    <div className="min-h-screen flex flex-col bg-[#E9EDF0] dark:bg-[#0F172A]">
       {/* Kontainer Utama */}
       <div className="grow flex items-center justify-center p-4 relative">
         {/* Overlay Lockout */}
         {lockoutTime > 0 && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md rounded-lg">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 dark:bg-slate-900/80 backdrop-blur-md rounded-lg">
             <div className="text-white text-2xl font-bold mb-2">
               Login Blocked
             </div>
@@ -126,7 +126,7 @@ const LoginPage: React.FC = () => {
           </div>
         )}
         <div
-          className={`bg-black p-12 rounded-lg shadow-sm w-full max-w-md border border-gray-200 transition-all ${lockoutTime > 0 ? "blur-sm pointer-events-none" : ""}`}
+          className={`bg-black dark:bg-[#1E293B] p-12 rounded-lg shadow-sm w-full max-w-md border border-gray-200 dark:border-slate-700 transition-all ${lockoutTime > 0 ? "blur-sm pointer-events-none" : ""}`}
         >
           <h1 className="text-3xl font-semibold text-white text-center mb-10">
             Login
@@ -135,14 +135,14 @@ const LoginPage: React.FC = () => {
           <form onSubmit={handleLogin} className="space-y-6">
             {/* Input Email */}
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-white font-semibold text-sm">
+              <label className="flex items-center gap-2 text-white dark:text-slate-200 font-semibold text-sm">
                 <Mail className="h-4 w-4" /> {/* IKON EMAIL DI SAMPING TEKS */}
                 <span>Email</span>
               </label>
               <input
                 type="text"
                 placeholder="Enter your email"
-                className="block w-full text-black px-3 py-2.5 border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="block w-full text-black dark:text-white px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -161,7 +161,7 @@ const LoginPage: React.FC = () => {
                 <input
                   type={showPassword ? "text" : "password"} // Logic ganti tipe input
                   placeholder="Enter your password"
-                  className="block w-full text-black px-3 py-2.5 pr-10 border border-gray-300 rounded-md bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="block w-full text-black dark:text-white px-3 py-2.5 pr-10 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -170,7 +170,7 @@ const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-400"
                 >
                   {showPassword ? (
                     <Eye className="h-4 w-4" />

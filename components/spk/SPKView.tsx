@@ -676,8 +676,8 @@ const idToEdit = item.spk_number || item.number;
       brand_name: item.brand_name || "",
       business_type: item.business_type || "",
       collab_type: item.collab_type || "",
-      campaign_start: formatToMonthInput(rawStart),
-      campaign_end: formatToMonthInput(rawEnd),
+      campaign_start: formatToMonthInput(rawStart || ""),
+      campaign_end: formatToMonthInput(rawEnd || ""),
       collab_nature: item.collab_nature?.toUpperCase().includes("NON-EKSLUSIF")
         ? "Non-Eksklusif"
         : "Eksklusif",
@@ -698,7 +698,7 @@ const idToEdit = item.spk_number || item.number;
 
   /**
    * handleSubmit - Submit form create atau update
-   * @param {React.FormEvent} e - Form event
+   * @param {FormDataType} submittedData - Data mentah dari SPKForm
    *
    * Logic:
    * 1. Format campaign period dari start/end
@@ -707,14 +707,14 @@ const idToEdit = item.spk_number || item.number;
    * 4. Filter talent, sow, competitor yang aktif
    * 5. POST ke /api/spk atau PUT ke /api/spk/:id
    */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (submittedData: FormDataType) => {
+    const data = submittedData || formData;
     setIsLoading(true);
 
     try {
       // ===== STEP 1: Format Campaign Period =====
-      const startFormat = formatTanggalIndo(formData.campaign_start);
-      const endFormat = formatTanggalIndo(formData.campaign_end);
+      const startFormat = formatTanggalIndo(data?.campaign_start || "");
+      const endFormat = formatTanggalIndo(data?.campaign_end || "");
       const campaign_period =
         startFormat === endFormat
           ? startFormat
@@ -723,8 +723,8 @@ const idToEdit = item.spk_number || item.number;
       // ===== STEP 2: Build Competitor Text =====
       const activeCompetitorsList = [];
       // Support both new array structure and old flat structure
-      if (formData.competitors && Array.isArray(formData.competitors)) {
-        formData.competitors.forEach((comp: any) => {
+      if (data?.competitors && Array.isArray(data.competitors)) {
+        data.competitors.forEach((comp: any) => {
           if (comp.name && comp.name.trim() !== "") {
             activeCompetitorsList.push(comp.name.trim());
           }
@@ -732,7 +732,7 @@ const idToEdit = item.spk_number || item.number;
       } else {
         // Fallback for old structure
         for (let i = 1; i <= 10; i++) {
-          const val = formData[`competitor${i}` as keyof FormDataType];
+          const val = data[`competitor${i}` as keyof FormDataType];
           if (
             i <= activeCompetitorCount &&
             val &&
@@ -750,36 +750,36 @@ const idToEdit = item.spk_number || item.number;
       // ===== STEP 4: Build Payload =====
       const payload: any = {
         // Section I: Company Identity
-        first_party_signer: formData.first_party_signer,
-        first_party_position: formData.first_party_position,
+        first_party_signer: data.first_party_signer,
+        first_party_position: data.first_party_position,
 
         // Section II: Vendor Identity
-        vendor_name: formData.vendor_name,
-        vendor_nik: formData.vendor_nik,
-        vendor_address: formData.vendor_address,
-        vendor_role: formData.vendor_role,
-        vendor_company_name: formData.vendor_company_name,
+        vendor_name: data.vendor_name,
+        vendor_nik: data.vendor_nik,
+        vendor_address: data.vendor_address,
+        vendor_role: data.vendor_role,
+        vendor_company_name: data.vendor_company_name,
 
         // Section III: Commercial Terms
-        brand_name: formData.brand_name,
-        business_type: formData.business_type,
-        collab_type: formData.collab_type,
+        brand_name: data.brand_name,
+        business_type: data.business_type,
+        collab_type: data.collab_type,
         campaign_period: campaign_period,
         collab_nature:
-          formData.collab_nature === "Non-Eksklusif"
+          data.collab_nature === "Non-Eksklusif"
             ? nonEksklusifText
             : eksklusifText,
 
         // Section VI: Payment & Bank
-        project_fee: Number(formData.project_fee).toLocaleString("id-ID"),
-        pph_23: Number(formData.pph_23).toLocaleString("id-ID"),
-        grand_total: Number(formData.grand_total).toLocaleString("id-ID"),
-        grand_total_words: formData.grand_total_words,
-        bank_name: formData.bank_name,
-        bank_branch: formData.bank_branch,
-        bank_account_number: formData.bank_account_number,
-        bank_account_name: formData.bank_account_name,
-        payment_date: formatTanggalIndo(formData.payment_date),
+        project_fee: Number(data.project_fee).toLocaleString("id-ID"),
+        pph_23: Number(data.pph_23).toLocaleString("id-ID"),
+        grand_total: Number(data.grand_total).toLocaleString("id-ID"),
+        grand_total_words: data.grand_total_words,
+        bank_name: data.bank_name,
+        bank_branch: data.bank_branch,
+        bank_account_number: data.bank_account_number,
+        bank_account_name: data.bank_account_name,
+        payment_date: formatTanggalIndo(data.payment_date || ""),
         payment_terms: "14 hari",
         created_at: new Date().toLocaleDateString("id-ID", {
           day: "numeric",
@@ -792,15 +792,15 @@ const idToEdit = item.spk_number || item.number;
       for (let i = 1; i <= 10; i++) {
         if (i <= activeSowCount) {
           payload[`sow${i}`] =
-            formData[`sow${i}` as keyof FormDataType] || null;
+            data[`sow${i}` as keyof FormDataType] || null;
           payload[`jumlah${i}`] =
-            formData[`jumlah${i}` as keyof FormDataType] || null;
+            data[`jumlah${i}` as keyof FormDataType] || null;
           payload[`keterangan${i}_1`] =
-            formData[`keterangan${i}_1` as keyof FormDataType] || null;
+            data[`keterangan${i}_1` as keyof FormDataType] || null;
           payload[`keterangan${i}_2`] =
-            formData[`keterangan${i}_2` as keyof FormDataType] || null;
+            data[`keterangan${i}_2` as keyof FormDataType] || null;
           payload[`keterangan${i}_3`] =
-            formData[`keterangan${i}_3` as keyof FormDataType] || null;
+            data[`keterangan${i}_3` as keyof FormDataType] || null;
         } else {
           payload[`sow${i}`] =
             payload[`jumlah${i}`] =
@@ -813,19 +813,19 @@ const idToEdit = item.spk_number || item.number;
 
       // ===== STEP 6: Add Active Talents =====
       // Convert new array structure to flat structure for API
-      if (formData.talents && Array.isArray(formData.talents)) {
-        formData.talents.forEach((talent: any, index: number) => {
+      if (data?.talents && Array.isArray(data.talents)) {
+        data.talents.forEach((talent: any, index: number) => {
           const i = index + 1;
           payload[`talent_name${i}`] = talent.name && talent.name.trim() !== "" ? talent.name : null;
         });
         // Fill remaining slots with null
-        for (let i = formData.talents.length + 1; i <= 5; i++) {
+        for (let i = data.talents.length + 1; i <= 5; i++) {
           payload[`talent_name${i}`] = null;
         }
       } else {
         // Fallback for old structure
         for (let i = 1; i <= 5; i++) {
-          const val = formData[`talent_name${i}` as keyof FormDataType];
+          const val = data[`talent_name${i}` as keyof FormDataType];
           payload[`talent_name${i}`] =
             i <= activeTalentCount && val && (val as string).trim() !== ""
               ? val
@@ -835,19 +835,19 @@ const idToEdit = item.spk_number || item.number;
 
       // ===== STEP 7: Add Active Competitors =====
       // Convert new array structure to flat structure for API
-      if (formData.competitors && Array.isArray(formData.competitors)) {
-        formData.competitors.forEach((comp: any, index: number) => {
+      if (data?.competitors && Array.isArray(data.competitors)) {
+        data.competitors.forEach((comp: any, index: number) => {
           const i = index + 1;
           payload[`competitor${i}`] = comp.name && comp.name.trim() !== "" ? comp.name : null;
         });
         // Fill remaining slots with null
-        for (let i = formData.competitors.length + 1; i <= 10; i++) {
+        for (let i = data.competitors.length + 1; i <= 10; i++) {
           payload[`competitor${i}`] = null;
         }
       } else {
         // Fallback for old structure
         for (let i = 1; i <= 10; i++) {
-          const val = formData[`competitor${i}` as keyof FormDataType];
+          const val = data[`competitor${i}` as keyof FormDataType];
           payload[`competitor${i}`] =
             i <= activeCompetitorCount && val && (val as string).trim() !== ""
               ? val
@@ -1010,40 +1010,14 @@ const idToEdit = item.spk_number || item.number;
   // === FORM VIEW ===
   if (isFormOpen) {
     return (
-      <div className="animate-in slide-in-from-right duration-500 pb-20">
-        {/* ============================================ */}
-        {/* FORM HEADER */}
-        {/* ============================================ */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShowExitModal(true)}
-              className="p-2 hover:bg-slate-100 rounded-full transition-all"
-              title="Back to list"
-            >
-              <ChevronLeft size={24} />
-            </button>
-            <div>
-              <h2 className="text-2xl font-bold text-[#1B3A5B]">
-                {editingId ? `Edit SPK - ${editingId}` : "Buat SPK Baru"}
-              </h2>
-              {/* UI Feedback: Draft tersimpan otomatis */}
-              <p className="text-xs text-slate-500 font-medium mt-1">
-                ✓ Draft tersimpan otomatis
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================ */}
-        {/* FORM COMPONENT */}
-        {/* ============================================ */}
+      <div className="h-screen overflow-hidden flex flex-col animate-in slide-in-from-right duration-500">
         <SPKForm
+          editingId={editingId}
+          onBack={() => setShowExitModal(true)}
           formData={formData}
           onChange={handleChange}
           onSubmit={handleSubmit}
           isLoading={isLoading}
-          editingId={editingId}
           activeTalentCount={activeTalentCount}
           setActiveTalentCount={setActiveTalentCount}
           onTalentChange={handleTalentChange}
@@ -1064,16 +1038,16 @@ const idToEdit = item.spk_number || item.number;
         {/* EXIT CONFIRMATION MODAL */}
         {/* ============================================ */}
         {showExitModal && (
-          <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-900/60 dark:bg-slate-900/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
             {/* Modal Container */}
-            <div className="bg-white rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+            <div className="bg-white dark:bg-[#1E293B] rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in duration-300">
               <div className="p-8 space-y-6">
                 {/* Modal Header */}
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-amber-50 rounded-2xl">
                     <ChevronLeft size={24} className="text-amber-600" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#1B3A5B]">
+                  <h3 className="text-xl font-bold text-[#1B3A5B] dark:text-slate-200">
                     Keluar dari Form?
                   </h3>
                 </div>
@@ -1090,7 +1064,7 @@ const idToEdit = item.spk_number || item.number;
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => setShowExitModal(false)}
-                    className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all"
+                    className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all"
                   >
                     Tetap di Sini
                   </button>
@@ -1115,15 +1089,15 @@ const idToEdit = item.spk_number || item.number;
 
   // === LIST VIEW ===
   return (
-    <div className="animate-in fade-in duration-500 space-y-6 relative min-h-100">
-      <h2 className="text-2xl font-bold mb-8 text-[#1B3A5B]">SPK Management</h2>
+    <div className="animate-in fade-in duration-500 space-y-6 relative min-h-100 dark:text-slate-200">
+      <h2 className="text-2xl font-bold mb-8 text-[#1B3A5B] dark:text-slate-200">SPK Management</h2>
 
       {/* Loading Overlay */}
       {isLoading && (
-        <div className="absolute inset-0 bg-white z-50 flex flex-col items-center justify-center space-y-4">
+        <div className="absolute inset-0 bg-white dark:bg-[#0F172A] z-50 flex flex-col items-center justify-center space-y-4">
           <div className="flex flex-col items-center sticky top-1/2 -translate-y-1/2">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1B3A5B]"></div>
-            <p className="text-slate-500 font-medium animate-pulse mt-4">
+            <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse mt-4">
               Loading
             </p>
           </div>
@@ -1171,14 +1145,14 @@ const idToEdit = item.spk_number || item.number;
               placeholder="Search talent or brand..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all shadow-sm text-black"
+              className="w-full pl-11 py-2.5 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all shadow-sm text-black dark:text-slate-200"
             />
           </div>
 
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="px-4 h-11 border font-bold border-slate-200 rounded-2xl bg-white text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer text-black"
+            className="px-4 h-11 border font-bold border-slate-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-[#1E293B] text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer text-black dark:text-slate-200"
           >
             <option value="all">All Year</option>
             {availableYears.map((year) => (
@@ -1191,7 +1165,7 @@ const idToEdit = item.spk_number || item.number;
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-4 h-11 border font-bold border-slate-200 rounded-2xl bg-white text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer text-black"
+            className="px-4 h-11 border font-bold border-slate-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-[#1E293B] text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer text-black dark:text-slate-200"
           >
             <option value="all">All Month</option>
             <option value="01">January</option>
@@ -1236,7 +1210,7 @@ const idToEdit = item.spk_number || item.number;
       />
 
       {/* Pagination */}
-      <div className="flex flex-col md:flex-row items-center justify-between p-1 border-t border-slate-50 gap-4">
+      <div className="flex flex-col md:flex-row items-center justify-between p-1 border-t border-slate-50 dark:border-slate-800 gap-4">
         <div className="flex items-center gap-3">
           <span className="text-xs font-medium text-slate-500">
             Rows per page:
@@ -1247,7 +1221,7 @@ const idToEdit = item.spk_number || item.number;
               setRowsPerPage(Number(e.target.value));
               setCurrentPage(1);
             }}
-            className="bg-white border border-slate-200 text-black text-xs font-bold rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500/10 shadow-sm cursor-pointer"
+            className="bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-800 text-black dark:text-slate-200 text-xs font-bold rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500/10 shadow-sm cursor-pointer"
           >
             {[10, 20, 50, 100].map((size) => (
               <option key={size} value={size}>
@@ -1266,7 +1240,7 @@ const idToEdit = item.spk_number || item.number;
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
-            className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             Prev
           </button>
@@ -1295,7 +1269,7 @@ const idToEdit = item.spk_number || item.number;
                   className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
                     currentPage === pageNum
                       ? "bg-[#1B3A5B] text-white shadow-md shadow-[#007AFF]/20"
-                      : "text-slate-500 hover:bg-slate-100"
+                      : "text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
                   {pageNum}
@@ -1309,7 +1283,7 @@ const idToEdit = item.spk_number || item.number;
               setCurrentPage((prev) => Math.min(prev + 1, totalPages))
             }
             disabled={currentPage === totalPages || totalPages === 0}
-            className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             Next
           </button>

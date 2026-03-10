@@ -53,13 +53,13 @@ export default function SPKTable({
   const safeItems = items || [];
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-visible">
+    <div className="bg-white dark:bg-[#1E293B] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-visible">
       <table className="w-full text-left min-w-200">
         {/* ============================================ */}
         {/* TABLE HEADER */}
         {/* ============================================ */}
-        <thead className="bg-slate-200 border-b border-slate-100">
-          <tr className="text-[10px] sm:text-[11px] font-bold text-slate-800 uppercase tracking-widest">
+        <thead className="bg-slate-200 dark:bg-[#1E293B] border-b border-slate-100 dark:border-slate-700">
+          <tr className="text-[10px] sm:text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest">
             {/* No Column */}
             <th className="p-2 sm:p-5 text-center w-10">No</th>
 
@@ -74,7 +74,7 @@ export default function SPKTable({
 
             {/* Date (Sortable) */}
             <th
-              className="p-2 sm:p-5 cursor-pointer hover:bg-slate-300 transition-colors group"
+              className="p-2 sm:p-5 cursor-pointer hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors group"
               onClick={() =>
                 onSortChange(sortOrder === "desc" ? "asc" : "desc")
               }
@@ -124,15 +124,15 @@ export default function SPKTable({
               return (
                 <tr
                   key={item.id}
-                  className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                  className="border-b border-slate-50 dark:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
                 >
                   {/* No Column */}
-                  <td className="p-2 sm:p-5 text-center font-bold text-slate-800">
+                  <td className="p-2 sm:p-5 text-center font-bold text-slate-800 dark:text-slate-200">
                     {indexOfFirstItem + index + 1}
                   </td>
 
                   {/* SPK Number */}
-                  <td className="p-2 sm:p-5 font-bold text-[#1B3A5B]">
+                  <td className="p-2 sm:p-5 font-bold text-[#1B3A5B] dark:text-blue-400">
                     {item.spk_number || item.number}
                   </td>
 
@@ -159,12 +159,12 @@ export default function SPKTable({
                   </td>
 
                   {/* Brand */}
-                  <td className="p-2 sm:p-5 text-slate-500">
+                  <td className="p-2 sm:p-5 text-slate-500 dark:text-slate-400">
                     {item.brand_name || item.brand}
                   </td>
 
                   {/* Date */}
-                  <td className="p-2 sm:p-5 text-slate-500">
+                  <td className="p-2 sm:p-5 text-slate-500 dark:text-slate-400">
                     {item.created_at || item.date}
                   </td>
 
@@ -200,7 +200,7 @@ export default function SPKTable({
 
                           {/* Dropdown Menu */}
                           <div
-                            className={`absolute right-0 w-44 bg-white border border-slate-100 rounded-2xl shadow-2xl z-20 py-2 transition-all animate-in fade-in zoom-in-95 duration-200 ${
+                            className={`absolute right-0 w-44 bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl z-20 py-2 transition-all animate-in fade-in zoom-in-95 duration-200 ${
                               isLastRow
                                 ? "bottom-full mb-2 origin-bottom-right"
                                 : "top-full mt-2 origin-top-right"
@@ -212,7 +212,7 @@ export default function SPKTable({
                                 onEdit(item);
                                 onActionClick(null);
                               }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                             >
                               <Pencil size={14} className="text-amber-500" />
                               Edit
@@ -224,7 +224,7 @@ export default function SPKTable({
                                 window.open(item.url, "_blank");
                                 onActionClick(null);
                               }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                             >
                               <Download
                                 size={14}
@@ -234,7 +234,7 @@ export default function SPKTable({
                             </button>
 
                             {/* Divider */}
-                            <div className="h-px bg-slate-100 my-1 mx-2"></div>
+                            <div className="h-px bg-slate-100 dark:bg-slate-700 my-1 mx-2"></div>
 
                             {/* Delete Button */}
                             <button
@@ -242,7 +242,7 @@ export default function SPKTable({
                                 onDelete(item);
                                 onActionClick(null);
                               }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors"
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                             >
                               <Trash2 size={14} /> Delete
                             </button>
@@ -258,7 +258,7 @@ export default function SPKTable({
             <tr>
               <td
                 colSpan={6}
-                className="p-10 text-center text-slate-400 italic"
+                className="p-10 text-center text-slate-400 dark:text-slate-500 italic"
               >
                 Data tidak ditemukan.
               </td>

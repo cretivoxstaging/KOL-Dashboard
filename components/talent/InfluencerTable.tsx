@@ -122,17 +122,17 @@ const TalentRow: React.FC<TalentRowProps> = ({
   }, [t.id, t.igAccount, t.last_update]);
 
   return (
-    <tr className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
-      <td className="p-2 text-center font-bold text-slate-800">
+    <tr className="border-b border-slate-50 dark:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+      <td className="p-2 text-center font-bold text-slate-800 dark:text-slate-200">
         {indexOfFirstItem + index + 1}
       </td>
       <td className="p-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center font-bold text-white text-xs border border-slate-200">
+          <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center font-bold text-white text-xs border border-slate-200 dark:border-slate-800">
             {t.name[0]}
           </div>
           <div>
-            <p className="font-bold text-slate-800">{t.name}</p>
+            <p className="font-bold text-slate-800 dark:text-slate-200">{t.name}</p>
             <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
               <Instagram size={10} className="text-pink-500" />
               {t.igAccount ? (
@@ -158,22 +158,22 @@ const TalentRow: React.FC<TalentRowProps> = ({
           {t.source || "Unknown"}
         </span>
       </td>
-      <td className="p-5 text-center border-r border-slate-50">
-        <span className="font-bold text-slate-700">
+      <td className="p-5 text-center border-r border-slate-50 dark:border-slate-800">
+        <span className="font-bold text-slate-700 dark:text-slate-300">
           {Number(t.igFollowers || 0).toLocaleString()}
         </span>
       </td>
       <td className="p-5 text-center">
-        <span className="font-bold text-slate-700">
+        <span className="font-bold text-slate-700 dark:text-slate-300">
           {Number(t.tiktokFollowers || 0).toLocaleString()}
         </span>
       </td>
       <td className="p-5 text-center">
         <div className="flex flex-col gap-1 items-center">
-          <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-700 text-[9px] font-bold uppercase border border-purple-100">
+          <span className="px-2 py-0.5 rounded bg-purple-50 dark:bg-slate-800 text-purple-700 dark:text-slate-300 text-[9px] font-bold uppercase border border-purple-100 dark:border-slate-700">
             IG: {t.tier_ig}
           </span>
-          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[9px] font-bold uppercase border border-blue-100">
+          <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-slate-300 text-[9px] font-bold uppercase border border-blue-100 dark:border-slate-700">
             TT: {t.tier_tiktok || "Nano"}
           </span>
         </div>
@@ -202,7 +202,7 @@ const TalentRow: React.FC<TalentRowProps> = ({
               ></div>
 
               <div
-                className={`absolute right-0 w-40 bg-white border border-slate-100 rounded-xl shadow-xl z-20 py-2 animate-in fade-in zoom-in duration-200 ${
+                className={`absolute right-0 w-40 bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-800 rounded-xl shadow-xl z-20 py-2 animate-in fade-in zoom-in duration-200 ${
                   isLastTwo
                     ? "bottom-full mb-2 origin-bottom-right"
                     : "top-full mt-2 origin-top-right"
@@ -213,7 +213,7 @@ const TalentRow: React.FC<TalentRowProps> = ({
                     onDetailClick(t);
                     setOpenDropdown(false);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
                   <Eye size={14} className="text-blue-500" /> Detail
                 </button>
@@ -221,7 +221,7 @@ const TalentRow: React.FC<TalentRowProps> = ({
                 <button
                   onClick={handleManualSync}
                   disabled={isSyncing}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                 >
                   <RefreshCw
                     size={14}
@@ -235,12 +235,12 @@ const TalentRow: React.FC<TalentRowProps> = ({
                     onUpdate(t);
                     setOpenDropdown(false);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
                   <Pencil size={14} className="text-amber-500" /> Edit
                 </button>
 
-                <div className="h-px bg-slate-100 my-1 mx-2"></div>
+                <div className="h-px bg-slate-100 dark:bg-slate-800 my-1 mx-2"></div>
 
                 <button
                   onClick={() => {

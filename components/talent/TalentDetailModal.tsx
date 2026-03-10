@@ -44,10 +44,10 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
   return (
     <div
       className={
-        "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
+        "fixed inset-0 bg-black/60 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
       }
     >
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide">
+      <div className="bg-white dark:bg-[#1E293B] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide border border-slate-200 dark:border-slate-800">
         {/* Header modal */}
         <div className="flex justify-between items-start mb-8">
           <div className="flex gap-4">
@@ -57,7 +57,7 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
             <div>
               <div className="flex items-center gap-3">
                 {/* Nama Utama */}
-                <h3 className="text-2xl font-black text-[#1B3A5B]">
+                <h3 className="text-2xl font-black text-[#1B3A5B] dark:text-slate-100">
                   {selectedDetail.name}
                 </h3>
                 {/* Badge Source */}
@@ -71,7 +71,7 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-slate-400">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-slate-100 text-[#1B3A5B] text-[10px] font-bold rounded-md uppercase tracking-wider">
+                  <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-[#1B3A5B] dark:text-slate-200 text-[10px] font-bold rounded-md uppercase tracking-wider">
                     {selectedDetail.category}
                   </span>
                   {!hideStatus && (
@@ -79,7 +79,7 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
                       className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${
                         selectedDetail.status === "Available"
                           ? "bg-green-100 text-green-600"
-                          : "bg-slate-200 text-slate-700"
+                          : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
                       }`}
                     >
                       {selectedDetail.status}
@@ -95,7 +95,7 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
           </div>
           <button
             onClick={() => setSelectedDetail(null)}
-            className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-700"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-700 dark:text-slate-300"
           >
             <Plus size={24} className="rotate-45" />
           </button>
@@ -104,7 +104,7 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
           {/* Kolom kiri: personal info */}
           <div className="space-y-5">
-            <h4 className="text-[11px] font-bold text-black uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+            <h4 className="text-[11px] font-bold text-black dark:text-slate-100 uppercase tracking-[0.2em] border-b border-slate-100 dark:border-slate-800 pb-2">
               Personal Information
             </h4>
             <div className="grid grid-cols-2 gap-y-4 gap-x-2">
@@ -154,20 +154,20 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
           </div>
           {/* Kolom kanan: business & socials */}
           <div className="space-y-5">
-            <h4 className="text-[11px] font-bold text-black uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+            <h4 className="text-[11px] font-bold text-black dark:text-slate-100 uppercase tracking-[0.2em] border-b border-slate-100 dark:border-slate-800 pb-2">
               Social Media & Business
             </h4>
             {/* SOCIAL LINKS */}
             <div className="space-y-4">
               {/* INSTAGRAM CARD */}
-              <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
+              <div className="relative bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700">
                 {/* TIER BADGE */}
                 <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md uppercase tracking-tighter">
                   {selectedDetail.tier_ig || "Nano"}
                 </div>
                 {/* HEADER LINE: Label & ER */}
                 <div className="flex gap-2 items-center mb-1">
-                  <p className="text-[9px] font-bold text-slate-700 uppercase">
+                  <p className="text-[9px] font-bold text-slate-700 dark:text-slate-200 uppercase">
                     Instagram Profile
                   </p>
                   {/* ER Badge di samping tulisan Instagram Profile */}
@@ -191,11 +191,11 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
                 </a>
               </div>
               {/* TIKTOK CARD */}
-              <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
+              <div className="relative bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700">
                 <div className="absolute -top-2 -right-2 bg-pink-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md uppercase tracking-tighter">
                   {selectedDetail.tier_tiktok || "Nano"}
                 </div>
-                <p className="text-[9px] font-bold text-slate-700 uppercase mb-1">
+                <p className="text-[9px] font-bold text-slate-700 dark:text-slate-200 uppercase mb-1">
                   TikTok Profile
                 </p>
                 <a
@@ -219,8 +219,8 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
                 </a>
               </div>
               {/* YOUTUBE CARD */}
-              <div className="relative bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                <p className="text-[9px] font-bold text-slate-700 uppercase mb-1">
+              <div className="relative bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700">
+                <p className="text-[9px] font-bold text-slate-700 dark:text-slate-200 uppercase mb-1">
                   Channel YouTube
                 </p>
                 <a
@@ -248,14 +248,14 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
                 </a>
               </div>
               {/* BUSINESS EMAIL CARD */}
-              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                <p className="text-[9px] font-bold text-slate-00 uppercase mb-1">
+              <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700">
+                <p className="text-[9px] font-bold text-slate-700 dark:text-slate-200 uppercase mb-1">
                   Business Email
                 </p>
                 {selectedDetail.email && selectedDetail.email !== "-" ? (
                   <a
                     href={`mailto:${selectedDetail.email}`}
-                    className="text-sm font-bold text-slate-700 flex items-center gap-2 hover:text-[#1B3A5B] transition-colors"
+                    className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 hover:text-[#1B3A5B] dark:hover:text-blue-300 transition-colors"
                   >
                     <svg
                       className="w-4 h-4"

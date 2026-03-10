@@ -96,11 +96,11 @@ const TalentTable: React.FC<TalentTableProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [editingTalent, setEditingTalent] = useState<Talent | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedTalent, setSelectedTalent] = useState<Talent | null>(null);
-  const itemsPerPage = 10;
 
   const getTalentStatusValue = (talent: Talent) => {
     const statusFromTalent = (talent as any)?.talent_status;
@@ -163,10 +163,11 @@ const TalentTable: React.FC<TalentTableProps> = ({
   }, [selectedStatus, searchFilteredTalents]);
 
   // Pagination
-  const totalPages = Math.ceil(statusFilteredTalents.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedTalents = statusFilteredTalents.slice(startIndex, endIndex);
+  const filteredTalent = statusFilteredTalents;
+  const indexOfLastItem = currentPage * rowsPerPage;
+  const indexOfFirstItem = indexOfLastItem - rowsPerPage;
+  const paginatedTalents = filteredTalent.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTalent.length / rowsPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -278,13 +279,20 @@ const TalentTable: React.FC<TalentTableProps> = ({
 
       // Refresh data after sync
       onRefresh();
-      alert("Sync berhasil! Data telah diperbarui.");
     } catch (err) {
       console.error("Manual sync failed", err);
       alert("Ada error saat sync, cek koneksi atau limit API.");
     } finally {
       setSyncingId(null);
       setOpenDropdown(null);
+    }
+  };
+
+  const handleRealTimeRefresh = async () => {
+    try {
+      await onRefresh();
+    } catch (err) {
+      console.error("Gagal merefresh tabel:", err);
     }
   };
 
@@ -339,11 +347,13 @@ const TalentTable: React.FC<TalentTableProps> = ({
     isBadge = false,
   }: any) => (
     <div
-      className={`bg-slate-50 rounded-xl p-4 border border-slate-200 ${fullWidth ? "col-span-full" : ""}`}
+      className={`bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 ${fullWidth ? "col-span-full" : ""}`}
     >
       <div className="flex items-center gap-3 mb-2">
-        {Icon && <Icon size={16} className="text-slate-600" />}
-        <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">
+        {Icon && (
+          <Icon size={16} className="text-slate-600 dark:text-slate-300" />
+        )}
+        <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">
           {label}
         </span>
       </div>
@@ -354,11 +364,13 @@ const TalentTable: React.FC<TalentTableProps> = ({
           {value || "Unknown"}
         </span>
       ) : isBadge ? (
-        <span className="inline-block px-2 py-1 bg-slate-200 text-slate-700 text-xs font-bold rounded-md">
+        <span className="inline-block px-2 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-md">
           {value || "-"}
         </span>
       ) : (
-        <p className="text-sm font-medium text-slate-900">{value || "-"}</p>
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+          {value || "-"}
+        </p>
       )}
     </div>
   );
@@ -371,10 +383,12 @@ const TalentTable: React.FC<TalentTableProps> = ({
     value?: string | null;
   }) => (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-tighter mb-0.5">
+      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tighter mb-0.5">
         {label}
       </p>
-      <p className="text-xs font-bold text-slate-700">{value || "-"}</p>
+      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
+        {value || "-"}
+      </p>
     </div>
   );
 
@@ -385,7 +399,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
       case "taken":
         return "bg-red-100 text-red-700 border border-red-200";
       default:
-        return "bg-gray-100 text-gray-700 border border-gray-200";
+        return "bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-600";
     }
   };
 
@@ -394,7 +408,9 @@ const TalentTable: React.FC<TalentTableProps> = ({
       <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          <p className="mt-4 text-gray-600">Loading internal talent data...</p>
+          <p className="mt-4 text-gray-600 dark:text-slate-400">
+            Loading internal talent data...
+          </p>
         </div>
       </div>
     );
@@ -403,48 +419,56 @@ const TalentTable: React.FC<TalentTableProps> = ({
   return (
     <div className="w-full">
       {/* Page Title */}
-      <h1 className="text-2xl font-bold mb-6 text-slate-800">
+      <h1 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-200">
         Talent Management
       </h1>
 
-{/* Stats Summary */}
-<div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-  {/* Card 1: Total khusus Talent saja */}
-  <div className="bg-white border border-gray-200 rounded-lg p-4">
-    <div className="text-sm text-gray-600 mb-1">Total Talent</div>
-    <div className="text-2xl font-bold text-gray-900">
-      {talents.filter((t) => t.source?.toLowerCase() === "talent").length}
-    </div>
-  </div>
+      {/* Stats Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        {/* Card 1: Total khusus Talent saja */}
+        <div className="bg-white dark:bg-[#1E293B] border border-gray-200 dark:border-slate-800 rounded-lg p-4">
+          <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">
+            Total Talent
+          </div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+            {talents.filter((t) => t.source?.toLowerCase() === "talent").length}
+          </div>
+        </div>
 
-  {/* Card 2: Available khusus yang source-nya Talent */}
-  <div className="bg-white border border-gray-200 rounded-lg p-4">
-    <div className="text-sm text-gray-600 mb-1">Available</div>
-    <div className="text-2xl font-bold text-green-600">
-      {
-        talents.filter(
-          (t) => 
-            t.source?.toLowerCase() === "talent" && 
-            (t.status?.toLowerCase() === "active" || t.status?.toLowerCase() === "available")
-        ).length
-      }
-    </div>
-  </div>
+        {/* Card 2: Available khusus yang source-nya Talent */}
+        <div className="bg-white dark:bg-[#1E293B] border border-gray-200 dark:border-slate-800 rounded-lg p-4">
+          <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">
+            Available
+          </div>
+          <div className="text-2xl font-bold text-green-600">
+            {
+              talents.filter(
+                (t) =>
+                  t.source?.toLowerCase() === "talent" &&
+                  (t.status?.toLowerCase() === "active" ||
+                    t.status?.toLowerCase() === "available"),
+              ).length
+            }
+          </div>
+        </div>
 
-  {/* Card 3: Taken khusus yang source-nya Talent */}
-  <div className="bg-white border border-gray-200 rounded-lg p-4">
-    <div className="text-sm text-gray-600 mb-1">Taken</div>
-    <div className="text-2xl font-bold text-red-600">
-      {
-        talents.filter(
-          (t) => 
-            t.source?.toLowerCase() === "talent" && 
-            (t.status?.toLowerCase() === "inactive" || t.status?.toLowerCase() === "taken")
-        ).length
-      }
-    </div>
-  </div>
-</div>
+        {/* Card 3: Taken khusus yang source-nya Talent */}
+        <div className="bg-white dark:bg-[#1E293B] border border-gray-200 dark:border-slate-800 rounded-lg p-4">
+          <div className="text-sm text-gray-600 dark:text-slate-400 mb-1">
+            Taken
+          </div>
+          <div className="text-2xl font-bold text-red-600">
+            {
+              talents.filter(
+                (t) =>
+                  t.source?.toLowerCase() === "talent" &&
+                  (t.status?.toLowerCase() === "inactive" ||
+                    t.status?.toLowerCase() === "taken"),
+              ).length
+            }
+          </div>
+        </div>
+      </div>
 
       {/* Action Bar */}
       <div className="mb-6 flex flex-col md:flex-row md:items-center gap-3 w-full">
@@ -458,62 +482,75 @@ const TalentTable: React.FC<TalentTableProps> = ({
             placeholder="Search by name, email, or phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 pl-9 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            className="w-full px-4 py-2 pl-9 border border-gray-300 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-[#1E293B] text-black dark:text-slate-200"
           />
         </div>
 
         <select
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-40 text-black font-medium text-sm"
+          className="px-3 py-2 border border-gray-300 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-[#1E293B] min-w-40 text-black dark:text-slate-200 font-medium text-sm"
         >
           <option value="All">All Status</option>
           <option value="Available">Available</option>
           <option value="Taken">Taken</option>
         </select>
-
-        <button
-          type="button"
-          onClick={exportToExcel}
-          className="md:ml-auto inline-flex items-center bg-green-500 hover:bg-green-600 justify-center gap-2 px-5 py-3 rounded-2xl font-bold text-white shadow-xl shadow-blue-900/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-        >
-          <Upload size={18} />
-        </button>
+        <div className="md:ml-auto flex items-center gap-3">
+          <button
+            onClick={handleRealTimeRefresh}
+            disabled={isLoading}
+            className="flex items-center gap-2 bg-white dark:bg-[#1E293B] hover:bg-slate-100 dark:hover:bg-slate-800 hover:scale-110 text-slate-600 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-800 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            title="Refresh Data"
+          >
+            <RefreshCw
+              size={18}
+              className={`${isLoading ? "animate-spin" : ""}`}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={exportToExcel}
+            title="Export Data"
+            className="inline-flex items-center bg-green-500 hover:bg-green-600 justify-center gap-2 px-5 py-3 rounded-2xl font-bold text-white shadow-xl shadow-blue-900/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            <Upload size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-[#1E293B] rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-gray-200">
+            <thead className="bg-slate-50 dark:bg-[#1E293B] border-b border-gray-200 dark:border-slate-700">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
                   Nama
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
                   Domisili
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
                   Instagram Account
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
                   Pekerjaan
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
               {paginatedTalents.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
-                    <div className="text-gray-500">
+                    <div className="text-gray-500 dark:text-slate-400">
                       <svg
-                        className="mx-auto h-12 w-12 text-gray-400 mb-4"
+                        className="mx-auto h-12 w-12 text-gray-400 dark:text-slate-500 mb-4"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -525,7 +562,9 @@ const TalentTable: React.FC<TalentTableProps> = ({
                           d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
                         />
                       </svg>
-                      <p className="text-lg font-medium">No talent found</p>
+                      <p className="text-lg font-medium text-slate-700 dark:text-slate-300">
+                        No talent found
+                      </p>
                       <p className="text-sm mt-1">
                         Try adjusting your search or filter criteria
                       </p>
@@ -551,7 +590,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                   return (
                     <tr
                       key={talent.id}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
                     >
                       {/* Nama */}
                       <td className="px-6 py-4">
@@ -562,11 +601,11 @@ const TalentTable: React.FC<TalentTableProps> = ({
                             </span>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
                               {talent.name || "N/A"}
                             </div>
                             {talent.email && (
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-gray-500 dark:text-slate-400">
                                 {talent.email}
                               </div>
                             )}
@@ -577,8 +616,11 @@ const TalentTable: React.FC<TalentTableProps> = ({
                       {/* Domisili */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <MapPin size={14} className="text-gray-400" />
-                          <span className="text-sm text-gray-900">
+                          <MapPin
+                            size={14}
+                            className="text-gray-400 dark:text-slate-500"
+                          />
+                          <span className="text-sm text-gray-900 dark:text-slate-100">
                             {talent.domisili || "-"}
                           </span>
                         </div>
@@ -598,7 +640,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                               {igUsername}
                             </a>
                           ) : (
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
                               {igUsername}
                             </span>
                           )}
@@ -608,8 +650,11 @@ const TalentTable: React.FC<TalentTableProps> = ({
                       {/* Pekerjaan */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <Briefcase size={14} className="text-gray-400" />
-                          <span className="text-sm text-gray-900">
+                          <Briefcase
+                            size={14}
+                            className="text-gray-400 dark:text-slate-500"
+                          />
+                          <span className="text-sm text-gray-900 dark:text-slate-100">
                             {talent.pekerjaan || "-"}
                           </span>
                         </div>
@@ -659,7 +704,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                               ></div>
 
                               <div
-                                className={`absolute right-0 w-40 bg-white border border-slate-100 rounded-xl shadow-xl z-20 py-2 animate-in fade-in zoom-in duration-200 ${
+                                className={`absolute right-0 w-40 bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-800 rounded-xl shadow-xl z-20 py-2 animate-in fade-in zoom-in duration-200 ${
                                   isLastTwo
                                     ? "bottom-full mb-2 origin-bottom-right"
                                     : "top-full mt-2 origin-top-right"
@@ -670,7 +715,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                                     handleDetailClick(talent);
                                     setOpenDropdown(null);
                                   }}
-                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                                 >
                                   <Eye size={14} className="text-blue-500" />{" "}
                                   Detail
@@ -679,7 +724,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                                 <button
                                   onClick={() => handleManualSync(talent)}
                                   disabled={isSyncing}
-                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                                 >
                                   <RefreshCw
                                     size={14}
@@ -694,7 +739,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                                   onClick={() => {
                                     handleEditRequest(talent);
                                   }}
-                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                                 >
                                   <Pencil
                                     size={14}
@@ -703,7 +748,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                                   Edit
                                 </button>
 
-                                <div className="h-px bg-slate-100 my-1 mx-2"></div>
+                                <div className="h-px bg-slate-100 dark:bg-slate-800 my-1 mx-2"></div>
 
                                 <button
                                   onClick={() => {
@@ -725,64 +770,102 @@ const TalentTable: React.FC<TalentTableProps> = ({
             </tbody>
           </table>
         </div>
+      </div>
+            {/* PAGINATION CONTROLS */}
+      <div className="flex flex-col md:flex-row items-center justify-between mt-6 px-2 pb-4 gap-4">
+        {/* Info Rows Per Page */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium text-slate-500">
+            Rows per page:
+          </span>
+          <select
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-800 text-black dark:text-slate-200 text-xs font-bold rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500/10 shadow-sm cursor-pointer"
+          >
+            {[10, 20, 50, 100, 200].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-slate-400">
+            Showing {indexOfFirstItem + 1} to{" "}
+            {Math.min(indexOfLastItem, filteredTalent.length)} of{" "}
+            {filteredTalent.length}
+          </span>
+        </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
-            <div className="text-sm text-gray-700">
-              Showing {startIndex + 1} to{" "}
-              {Math.min(endIndex, statusFilteredTalents.length)} of{" "}
-              {statusFilteredTalents.length} entries
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Previous
-              </button>
-              <div className="flex gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-4 py-2 rounded-lg transition-colors ${
-                        currentPage === page
-                          ? "bg-blue-600 text-white"
-                          : "border border-gray-300 hover:bg-gray-100"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ),
-                )}
-              </div>
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Next
-              </button>
-            </div>
+        {/* Page Navigation */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            Prev
+          </button>
+
+          <div className="flex items-center gap-1 mx-2">
+            {[...Array(totalPages)].map((_, i) => {
+              const pageNum = i + 1;
+              // Hanya tampilkan beberapa nomor halaman jika terlalu banyak
+              if (
+                totalPages > 5 &&
+                Math.abs(pageNum - currentPage) > 1 &&
+                pageNum !== 1 &&
+                pageNum !== totalPages
+              ) {
+                if (pageNum === 2 || pageNum === totalPages - 1)
+                  return (
+                    <span key={pageNum} className="text-slate-300">
+                      ...
+                    </span>
+                  );
+                return null;
+              }
+
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                    currentPage === pageNum
+                      ? "bg-[#1B3A5B] text-white shadow-md shadow-[#1B3A5B]/20"
+                      : "text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
           </div>
-        )}
+
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages || totalPages === 0}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && talentToDelete && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-120 p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-4xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200 p-8">
+          <div className="bg-white dark:bg-[#1E293B] rounded-4xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-slate-800 p-8">
             {/* Icon & Title */}
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-red-50 rounded-lg text-red-600">
                 <Trash2 size={24} strokeWidth={2.5} />
               </div>
-              <h3 className="text-2xl font-black text-slate-800 tracking-tight">
+              <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
                 Delete Talent
               </h3>
             </div>
@@ -801,7 +884,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
 
             {/* Input Confirmation */}
             <div className="space-y-3 mb-8">
-              <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider ml-1">
+              <label className="text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">
                 Ketik <span className="text-red-600 italic">delete</span> untuk
                 konfirmasi:
               </label>
@@ -810,7 +893,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                 value={deleteConfirmationText}
                 onChange={(e) => setDeleteConfirmationText(e.target.value)}
                 placeholder="delete"
-                className="w-full px-5 py-4 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all placeholder:text-slate-300"
+                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1E293B] text-sm font-bold text-slate-700 dark:text-slate-300 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500"
               />
             </div>
 
@@ -822,7 +905,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                   setTalentToDelete(null);
                   setDeleteConfirmationText("");
                 }}
-                className="flex-1 py-4 border border-slate-200 text-slate-600 rounded-2xl font-black text-sm hover:bg-slate-50 transition-all active:scale-95"
+                className="flex-1 py-4 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
               >
                 Cancel
               </button>
@@ -855,22 +938,22 @@ const TalentTable: React.FC<TalentTableProps> = ({
       {detailModalOpen && selectedTalent && (
         <div
           className={
-            "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
+            "fixed inset-0 bg-black/60 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
           }
         >
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide">
+          <div className="bg-white dark:bg-[#1E293B] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative scrollbar-hide border border-slate-200 dark:border-slate-800">
             <div className="flex justify-between items-start mb-8">
               <div className="flex gap-4">
-                <div className="w-20 h-20 rounded-2xl bg-[#1B3A5B] flex items-center justify-center text-3xl font-bold text-white uppercase shadow-lg shadow-[#1B3A5B]/20">
+                <div className="w-20 h-20 rounded-2xl bg-[#1B3A5B] dark:bg-slate-700 flex items-center justify-center text-3xl font-bold text-white uppercase shadow-lg shadow-[#1B3A5B]/20 dark:shadow-slate-700/20">
                   {selectedTalent.name?.[0] || "?"}
                 </div>
                 <div>
                   <div className="flex items-center gap-3">
-                    <h3 className="text-2xl font-black text-[#1B3A5B]">
+                    <h3 className="text-2xl font-black text-[#1B3A5B] dark:text-slate-100">
                       {selectedTalent.name}
                     </h3>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-2 text-slate-400">
+                  <div className="flex items-center gap-1.5 mt-2 text-slate-400 dark:text-slate-500">
                     <div className="flex items-center gap-2">
                       <span
                         className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${getStatusBadgeStyle(
@@ -892,7 +975,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                   setDetailModalOpen(false);
                   setSelectedTalent(null);
                 }}
-                className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-700"
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-700 dark:text-slate-300"
               >
                 <Plus size={24} className="rotate-45" />
               </button>
@@ -900,12 +983,12 @@ const TalentTable: React.FC<TalentTableProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
               <div className="space-y-5">
-                <h4 className="text-[11px] font-bold text-black uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                <h4 className="text-[11px] font-bold text-black dark:text-slate-100 uppercase tracking-[0.2em] border-b border-slate-100 dark:border-slate-800 pb-2">
                   Personal Information
                 </h4>
                 <div className="grid grid-cols-2 gap-y-4 gap-x-2">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-tighter mb-0.5">
+                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tighter mb-0.5">
                       Contact Person
                     </p>
                     {selectedTalent.contactPerson ? (
@@ -925,7 +1008,9 @@ const TalentTable: React.FC<TalentTableProps> = ({
                         {selectedTalent.contactPerson}
                       </a>
                     ) : (
-                      <p className="text-xs font-bold text-slate-300">-</p>
+                      <p className="text-xs font-bold text-slate-300 dark:text-slate-500">
+                        -
+                      </p>
                     )}
                   </div>
                   <DetailItem
@@ -951,12 +1036,12 @@ const TalentTable: React.FC<TalentTableProps> = ({
               </div>
 
               <div className="space-y-5">
-                <h4 className="text-[11px] font-bold text-black uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                <h4 className="text-[11px] font-bold text-black dark:text-slate-100 uppercase tracking-[0.2em] border-b border-slate-100 dark:border-slate-800 pb-2">
                   Social Media & Insight
                 </h4>
                 <div className="space-y-4">
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                    <p className="text-[9px] font-bold text-slate-700 uppercase mb-1">
+                  <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700">
+                    <p className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
                       Instagram Account
                     </p>
                     {selectedTalent.igAccount ? (
@@ -974,14 +1059,16 @@ const TalentTable: React.FC<TalentTableProps> = ({
                         </span>
                       </a>
                     ) : (
-                      <p className="text-sm font-bold text-slate-300">-</p>
+                      <p className="text-sm font-bold text-slate-300 dark:text-slate-500">
+                        -
+                      </p>
                     )}
                   </div>
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                    <p className="text-[9px] font-bold text-slate-700 uppercase mb-1">
+                  <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700">
+                    <p className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
                       Alasan Jadi Talent
                     </p>
-                    <p className="text-sm font-bold text-slate-700">
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-100">
                       {selectedTalent.alasan || "-"}
                     </p>
                   </div>

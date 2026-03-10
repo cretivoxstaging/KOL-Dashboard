@@ -74,10 +74,12 @@ export function useTalentData() {
 
   const filteredAndSortedTalents = talents
     .filter((t) => {
+      const normalizedSearchTerm = searchTerm.toLowerCase();
       const matchSearch =
-        t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.suku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.igAccount?.toLowerCase().includes(searchTerm.toLowerCase());
+        t.name?.toLowerCase().includes(normalizedSearchTerm) ||
+        t.category?.toLowerCase().includes(normalizedSearchTerm) ||
+        t.suku?.toLowerCase().includes(normalizedSearchTerm) ||
+        t.igAccount?.toLowerCase().includes(normalizedSearchTerm);
       const matchReligion =
         selectedReligion === "All" || t.agama === selectedReligion;
       const currentStatus = String(t.status || "").trim().toLowerCase();

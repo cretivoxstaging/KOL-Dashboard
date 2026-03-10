@@ -76,7 +76,7 @@ export default function SPKFilter({
             placeholder="Search talent or brand..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-11 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/10 outline-none transition-all shadow-sm text-black"
+            className="w-full pl-11 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm text-black dark:text-white focus:ring-2 focus:ring-blue-500/10 outline-none transition-all shadow-sm placeholder:text-slate-300 dark:placeholder:text-slate-500"
           />
         </div>
 
@@ -86,7 +86,7 @@ export default function SPKFilter({
         <select
           value={selectedYear}
           onChange={(e) => onYearChange(e.target.value)}
-          className="px-4 h-11 border font-bold border-slate-200 rounded-2xl bg-white text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer text-black"
+          className="px-4 h-11 border font-bold border-slate-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-900 text-sm text-black dark:text-white outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer"
         >
           <option value="all">All Year</option>
           {availableYears.map((year) => (
@@ -102,7 +102,7 @@ export default function SPKFilter({
         <select
           value={selectedMonth}
           onChange={(e) => onMonthChange(e.target.value)}
-          className="px-4 h-11 border font-bold border-slate-200 rounded-2xl bg-white text-sm outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer text-black"
+          className="px-4 h-11 border font-bold border-slate-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-900 text-sm text-black dark:text-white outline-none shadow-sm focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer"
         >
           <option value="all">All Month</option>
           <option value="01">January</option>
@@ -128,7 +128,7 @@ export default function SPKFilter({
         <button
           onClick={onRefresh}
           disabled={isLoading}
-          className="flex items-center justify-center bg-white hover:bg-slate-100 hover:scale-110 text-slate-600 h-12 w-16 rounded-2xl font-bold border border-slate-200 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 hover:scale-110 text-slate-600 dark:text-slate-300 h-12 w-16 rounded-2xl font-bold border border-slate-200 dark:border-slate-700 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Refresh Data"
         >
           <RefreshCw

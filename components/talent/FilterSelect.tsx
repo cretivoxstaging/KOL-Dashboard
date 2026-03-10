@@ -34,11 +34,11 @@ interface FilterSelectProps {
 }
 
 const FilterSelect: React.FC<FilterSelectProps> = ({ value, onChange, options, placeholder }) => (
-  <div className="flex items-center bg-white px-3 py-2 border border-slate-200 rounded-xl shadow-sm hover:border-[#00F0FF]/30 transition-all">
+  <div className="flex items-center bg-white dark:bg-slate-900 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:border-[#00F0FF]/30 transition-all">
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="text-xs font-bold text-black outline-none bg-white cursor-pointer"
+      className="text-xs font-bold text-black dark:text-white outline-none bg-white dark:bg-slate-900 cursor-pointer"
     >
       <option value="All">{placeholder}</option>
       {options.map((opt) => (

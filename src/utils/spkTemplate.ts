@@ -220,7 +220,7 @@ export const generateHTML = (spkData: any): string => {
       rows += `
         <tr>
           <td class="label-cell">${no++}.</td>
-          <td class="field-name">Nama Perusahaan:</td>
+          <td class="field-name">Nama Perusahaan/Vendor:</td>
           <td id="preview-vendor-company-name" class="background-yellow">${spkData.vendor_company_name}</td>
         </tr>
       `;
@@ -657,7 +657,7 @@ export const generateHTML = (spkData: any): string => {
 
               <table class="word-table" style="margin-top: 30px">
                 <tr class="section-header" id="section-vendor">
-                  <td colspan="3">Bagian II: Identitas Vendor</td>
+                  <td colspan="3">Bagian II: Perusahaan/Vendor</td>
                 </tr>
                 ${vendorIdentityRows}
                 <tr class="section-header">

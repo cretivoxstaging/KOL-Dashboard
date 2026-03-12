@@ -400,7 +400,7 @@ export default function TalentView({
         </div>
 
         {/* BARIS 2: ADVANCED FILTERS */}
-        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-slate-100 dark:border-slate-800">
           {isFilterActive && (
             <button
               onClick={() => {
@@ -582,21 +582,25 @@ export default function TalentView({
         <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-100 animate-in fade-in duration-300">
           <div className="bg-white dark:bg-[#1E293B] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-slate-800">
             <div className="p-6">
-              <div className="flex items-center gap-3 text-red-600 mb-4">
-                <Trash2 size={24} />
-                <h3 className="text-xl font-bold">Delete Employee</h3>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-red-50 rounded-lg text-red-600">
+                <Trash2 size={24} strokeWidth={2.5} />
               </div>
+              <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                Delete Influencer
+              </h3>
+            </div>
 
               <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-6">
                 <p className="text-red-800 text-sm font-medium">
                   <span className="font-bold">Warning:</span> This action cannot
-                  be undone. This will permanently delete the employee record.
+                  be undone. This will permanently delete the influencer record.
                 </p>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 mb-6 border border-slate-100 dark:border-slate-800">
                 <p className="text-xs text-slate-500 uppercase font-bold mb-2">
-                  Employee to be deleted:
+                  Influencer to be deleted:
                 </p>
                 <div className="space-y-1">
                   <p className="text-sm">

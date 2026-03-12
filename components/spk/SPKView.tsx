@@ -49,6 +49,7 @@ import {
   formatToMonthInput,
   bulanIndo,
 } from "./spk-helpers";
+import { SPK_RESET_EVENT } from "@/app/utils/spkFormEvents";
 
 /**
  * ============================================
@@ -80,7 +81,7 @@ interface FormDataType {
   campaign_start: string;
   campaign_end: string;
   campaign_period: string;
-  collab_nature: "Eksklusif" | "Non-Eksklusif";
+  collab_nature: "" | "Eksklusif" | "Non-Eksklusif";
 
   // Section IV: Scope of Work (Talents as Array with unique IDs)
   talents: Array<{ id: string; name: string }>;
@@ -121,20 +122,9 @@ export default function SPKView({
 
   // === UI State ===
   const [openActionId, setOpenActionId] = useState<string | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("spk_form_open") === "true";
-    }
-    return false;
-  });
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [editingId, setEditingId] = useState<string | number | null>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("spk_editing_id");
-      return saved || null;
-    }
-    return null;
-  });
+  const [editingId, setEditingId] = useState<string | number | null>(null);
 
   // === Filter & Pagination State ===
   const [searchQuery, setSearchQuery] = useState("");
@@ -162,13 +152,10 @@ export default function SPKView({
 
   // === Exit Confirmation Modal State ===
   const [showExitModal, setShowExitModal] = useState(false);
+  const [formResetKey, setFormResetKey] = useState(0);
 
   // === Form Data State ===
-  const initialSows = generateInitialSows();
-  const initialTalents = generateInitialTalents();
-  const initialCompetitors = generateInitialCompetitors();
-
-  const [formData, setFormData] = useState<FormDataType>({
+  const createEmptyFormData = (): FormDataType => ({
     // Section I: Company Identity
     first_party_signer: "",
     first_party_position: "",
@@ -187,14 +174,14 @@ export default function SPKView({
     campaign_start: "",
     campaign_end: "",
     campaign_period: "",
-    collab_nature: "Eksklusif",
+    collab_nature: "Non-Eksklusif",
 
     // Section IV: Scope of Work
-    talents: initialTalents,
-    ...initialSows,
+    talents: generateInitialTalents(),
+    ...generateInitialSows(),
 
     // Section V: Competitors
-    competitors: initialCompetitors,
+    competitors: generateInitialCompetitors(),
 
     // Section VI: Payment & Bank
     project_fee: "",
@@ -206,8 +193,12 @@ export default function SPKView({
     bank_account_number: "",
     bank_account_name: "",
     payment_date: "",
-    payment_terms: "14 hari",
-  } as FormDataType);
+    payment_terms: "",
+  });
+
+  const [formData, setFormData] = useState<FormDataType>(() =>
+    createEmptyFormData(),
+  );
 
   // === Constants ===
   const EXTERNAL_CALCULATOR_URL = "https://tax-kol-calculator.vercel.app/";
@@ -223,135 +214,33 @@ export default function SPKView({
    * Digunakan saat:
    * - Menutup form
    * - Membuka form create baru (agar data edit tidak nyangkut)
-   * 
-   * Cleaned up localStorage keys:
-   * - spk_form_draft: Simpan formData
-   * - spk_editing_id: Simpan ID yang sedang diedit
-   * - spk_active_talent/sow/comp: Simpan counter
    */
-  const resetForm = () => {
-    localStorage.removeItem("spk_form_draft");
-  localStorage.removeItem("spk_editing_id");
-  localStorage.removeItem("spk_active_talent");
-  localStorage.removeItem("spk_active_sow");
-  localStorage.removeItem("spk_active_comp");
-  localStorage.removeItem("spk_form_open");
+  const resetForm = React.useCallback(() => {
     setEditingId(null);
-    setFormData({
-      first_party_signer: "",
-      first_party_position: "",
-      vendor_name: "",
-      vendor_nik: "",
-      vendor_address: "",
-      vendor_role: "",
-      vendor_company_name: "",
-      brand_name: "",
-      business_type: "",
-      collab_type: "",
-      campaign_start: "",
-      campaign_end: "",
-      campaign_period: "",
-      collab_nature: "Eksklusif",
-      talents: generateInitialTalents(),
-      ...initialSows,
-      competitors: generateInitialCompetitors(),
-      project_fee: "",
-      pph_23: "",
-      grand_total: "",
-      grand_total_words: "",
-      bank_name: "",
-      bank_branch: "",
-      bank_account_number: "",
-      bank_account_name: "",
-      payment_date: "",
-      payment_terms: "14 hari",
-    } as FormDataType);
+    setFormData(createEmptyFormData());
 
     setActiveSowCount(1);
     setActiveTalentCount(1);
     setActiveCompetitorCount(1);
     setSowIds([Date.now()]);
-  };
+    setFormResetKey((prev) => prev + 1);
+  }, []);
 
-/**
- * ============================================
- * HYDRATION SYSTEM (AUTO-LOAD DRAFT)
- * ============================================
- * Saat component pertama kali mount, cek apakah ada draft di localStorage
- * Jika ada, restore formData, counters, dan editingId
- * Jalankan hanya 1x saat component mount
- */
-useEffect(() => {
-  if (typeof window === "undefined") return;
+  // Reset form saat ada event auth (login/logout)
+  useEffect(() => {
+    const handleAuthReset = () => {
+      resetForm();
+      setIsFormOpen(false);
+    };
 
-  const savedDraft = localStorage.getItem("spk_form_draft");
-  const savedEditingId = localStorage.getItem("spk_editing_id");
-
-  if (savedDraft) {
-    try {
-      const parsed = JSON.parse(savedDraft);
-      if (Object.keys(parsed).length > 0) {
-        console.log("✓ Draft ditemukan, melakukan restore...");
-        
-        // Convert flat structure to array structure if needed
-        if (!parsed.talents || !Array.isArray(parsed.talents)) {
-          const talentsArray: Array<{ id: string; name: string }> = [];
-          for (let i = 1; i <= 5; i++) {
-            const talentName = parsed[`talent_name${i}`];
-            if (talentName && talentName.trim() !== "") {
-              talentsArray.push({ id: crypto.randomUUID(), name: talentName });
-            }
-          }
-          if (talentsArray.length === 0) {
-            talentsArray.push({ id: crypto.randomUUID(), name: "" });
-          }
-          parsed.talents = talentsArray;
-        }
-
-        if (!parsed.competitors || !Array.isArray(parsed.competitors)) {
-          const competitorsArray: Array<{ id: string; name: string }> = [];
-          for (let i = 1; i <= 10; i++) {
-            const compName = parsed[`competitor${i}`];
-            if (compName && compName.trim() !== "") {
-              competitorsArray.push({ id: crypto.randomUUID(), name: compName });
-            }
-          }
-          if (competitorsArray.length === 0) {
-            competitorsArray.push({ id: crypto.randomUUID(), name: "" });
-          }
-          parsed.competitors = competitorsArray;
-        }
-        
-        // Restore formData
-        setFormData(parsed);
-        
-        // Restore counters - derive from arrays if available
-        setActiveTalentCount(parsed.talents?.length || 1);
-        setActiveCompetitorCount(parsed.competitors?.length || 1);
-        
-        const sowCount = localStorage.getItem("spk_active_sow");
-        if (sowCount) setActiveSowCount(Number(sowCount));
-        
-        // Restore editingId jika ada (keep as string untuk nomor SPK)
-        if (savedEditingId) {
-          setEditingId(savedEditingId);
-        }
-        
-        // Buka form otomatis
-        setIsFormOpen(true);
-        
-        console.log("✓ Draft berhasil di-restore: form terbuka kembali");
-      }
-    } catch (error) {
-      console.error("Failed to parse draft:", error);
-    }
-  }
-}, []); // Jalankan sekali saat mount
+    window.addEventListener(SPK_RESET_EVENT, handleAuthReset);
+    return () => window.removeEventListener(SPK_RESET_EVENT, handleAuthReset);
+  }, [resetForm]);
 
   /**
    * handleChange - Handle input change untuk semua field
    * Special handling untuk field uang (remove non-digits)
-   * Note: Auto-save to localStorage dilakukan di useEffect terpisah
+    * Note: Data hanya disimpan di memory selama komponen tetap mounted
    */
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -571,11 +460,9 @@ useEffect(() => {
    * 4. Set form open
    */
   const handleOpenEdit = (item: any) => {
-const idToEdit = item.spk_number || item.number;
-  setEditingId(idToEdit);
-
-  localStorage.setItem("spk_editing_id", idToEdit.toString());
-  localStorage.setItem("spk_form_open", "true");
+    const idToEdit = item.spk_number || item.number;
+    setEditingId(idToEdit);
+    setFormResetKey((prev) => prev + 1);
 
     // ===== STEP 1: Parse Campaign Period =====
     const period = item.campaign_period || "";
@@ -661,7 +548,7 @@ const idToEdit = item.spk_number || item.number;
 
     // ===== STEP 5: Set Form Data (Order Matters!) =====
     setFormData({
-      ...formData,
+      ...createEmptyFormData(),
       ...resetData, // FORCE kosong dulu
       talents: talentsArray, // Fill talent array dari DB
       ...sowData, // Fill SOW dari DB
@@ -885,44 +772,6 @@ const idToEdit = item.spk_number || item.number;
   };
   /**
    * ============================================
-   * PERSISTENCE SYSTEM (AUTO-SAVE DRAFT)
-   * ============================================
-   * Setiap kali formData atau counters berubah, simpan ke localStorage
-   * Key: 'spk_form_draft' untuk formData
-   * Dilakukan dengan debounce 500ms untuk performance
-   */
-  useEffect(() => {
-    if (!isFormOpen) return; // Jangan save jika form tidak terbuka
-
-    const timeoutId = setTimeout(() => {
-      if (typeof window !== "undefined") {
-        try {
-          // Save formData
-          localStorage.setItem("spk_form_draft", JSON.stringify(formData));
-          
-          // Save counters
-          localStorage.setItem("spk_active_talent", activeTalentCount.toString());
-          localStorage.setItem("spk_active_sow", activeSowCount.toString());
-          localStorage.setItem("spk_active_comp", activeCompetitorCount.toString());
-          
-          // Save editingId
-          if (editingId) {
-            localStorage.setItem("spk_editing_id", editingId.toString());
-          }
-          
-          console.log("✓ Draft tersimpan otomatis ke localStorage");
-        } catch (error) {
-          console.error("Failed to save draft:", error);
-        }
-      }
-    }, 500); // Debounce 500ms
-
-    // Cleanup: clear timeout jika component unmount atau deps berubah
-    return () => clearTimeout(timeoutId);
-  }, [formData, activeTalentCount, activeSowCount, activeCompetitorCount, editingId, isFormOpen]);
-
-  /**
-   * ============================================
    * AUTO-COMPUTE: Grand Total Words
    * ============================================
    * Setiap kali grand_total berubah, update grand_total_words otomatis
@@ -1012,6 +861,7 @@ const idToEdit = item.spk_number || item.number;
     return (
       <div className="h-screen overflow-hidden flex flex-col animate-in slide-in-from-right duration-500">
         <SPKForm
+          key={`${editingId ?? "new"}-${formResetKey}`}
           editingId={editingId}
           onBack={() => setShowExitModal(true)}
           formData={formData}

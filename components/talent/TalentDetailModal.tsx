@@ -171,7 +171,7 @@ const TalentDetailModal: React.FC<TalentDetailModalProps> = ({
                     Instagram Profile
                   </p>
                   {/* ER Badge di samping tulisan Instagram Profile */}
-                  <span className="text-[9px] font-black text-orange-600 bg-orange-100/50 px-1.5 py-0.5 rounded border border-orange-200 uppercase">
+                  <span className="text-[9px] font-black text-orange-600 px-1.5 py-0.5 rounded border border-orange-200/50 uppercase">
                     ER: {selectedDetail.er || "0.00%"}
                   </span>
                 </div>

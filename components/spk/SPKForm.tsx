@@ -81,6 +81,7 @@ function InputGroup({
   onFocus,
   onBlur,
   type = "text",
+  autoComplete = "off",
 }: any) {
   return (
     <div className="flex flex-col w-full">
@@ -91,6 +92,7 @@ function InputGroup({
         type={type}
         name={name}
         value={value}
+        autoComplete={autoComplete}
         onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}
@@ -129,12 +131,14 @@ export default function SPKForm({
   onRemoveCompetitor,
 }: SPKFormProps) {
   const EXTERNAL_CALCULATOR_URL = "https://tax-kol-calculator.vercel.app/";
+  const isCompetitorSectionOpen = formData.collab_nature === "Eksklusif";
 
   // Auto-scroll sync state - isolated dari form updates
   const [activeSection, setActiveSection] = useState<string>("");
 
   // Zoom state untuk preview scaling (50% - 200%)
   const [zoom, setZoom] = useState(1);
+  const [zoomInput, setZoomInput] = useState("100"); // Input field value
 
   // Tax calculator sticky window state
   const [isCalcOpen, setIsCalcOpen] = useState(false);
@@ -146,6 +150,7 @@ export default function SPKForm({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [scrollStart, setScrollStart] = useState({ left: 0, top: 0 });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const previewCanvasRef = useRef<HTMLDivElement>(null);
 
   // Defer activeSection untuk tidak memicu form re-render
   const deferredActiveSection = useDeferredValue(activeSection);
@@ -180,16 +185,67 @@ export default function SPKForm({
 
   // Zoom handlers
   const handleZoomIn = useCallback(() => {
-    setZoom((prev) => Math.min(prev + 0.1, 2)); // Max 200%
+    setZoom((prev) => {
+      const newZoom = Math.min(prev + 0.1, 2); // Max 200%
+      setZoomInput(String(Math.round(newZoom * 100)));
+      return newZoom;
+    });
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setZoom((prev) => Math.max(prev - 0.1, 0.5)); // Min 50%
+    setZoom((prev) => {
+      const newZoom = Math.max(prev - 0.1, 0.5); // Min 50%
+      setZoomInput(String(Math.round(newZoom * 100)));
+      return newZoom;
+    });
   }, []);
 
   const handleZoomReset = useCallback(() => {
-    setZoom(1); // Reset to 100%
+    const containerWidth = scrollContainerRef.current?.clientWidth ?? 0;
+    const documentWidth = previewCanvasRef.current?.offsetWidth ?? 0;
+
+    if (containerWidth <= 0 || documentWidth <= 0) {
+      setZoom(1);
+      setZoomInput("100");
+      return;
+    }
+
+    const fitScale = Math.min(containerWidth / documentWidth, 1);
+    setZoom(fitScale);
+    setZoomInput(String(Math.round(fitScale * 100)));
+
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = 0;
+    }
   }, []);
+
+  // Handle zoom input change from user typing
+  const handleZoomInputChange = useCallback(
+    (value: string) => {
+      setZoomInput(value);
+    },
+    []
+  );
+
+  // Handle zoom input commit (on Enter or onBlur)
+  const handleZoomInputCommit = useCallback(
+    (inputValue: string) => {
+      const parsed = parseInt(inputValue, 10);
+      if (isNaN(parsed)) {
+        // Invalid input, revert to current zoom
+        setZoomInput(String(Math.round(zoom * 100)));
+        return;
+      }
+
+      // Clamp value between 10 and 200
+      const clamped = Math.max(10, Math.min(200, parsed));
+      const zoomFraction = clamped / 100;
+
+      setZoom(zoomFraction);
+      setZoomInput(String(clamped));
+    },
+    [zoom]
+  );
 
   // Drag-to-scroll handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -229,6 +285,10 @@ export default function SPKForm({
   }, []);
 
   // Debounce srcDoc update: jangan update iframe terlalu sering saat user ngetik
+  /**
+    * Form state dipasok dari parent SPKView dan disimpan in-memory.
+    * Tidak ada persistence ke browser storage agar refresh selalu reset form.
+   */
   useEffect(() => {
     // Clear previous timer
     if (srcDocTimerRef.current) {
@@ -389,7 +449,7 @@ export default function SPKForm({
         {/* LEFT COLUMN: Header + Form */}
         <div className="w-full lg:w-7/12 h-full overflow-y-auto px-4">
           {/* HEADER - At top of scrollable area */}
-          <div className="sticky top-0 z-50 bg-white dark:bg-[#1E293B] px-6 py-4 border-b rounded-xl border-slate-200 dark:border-slate-700 shadow-sm shadow-slate-100">
+          <div className="sticky top-0 z-50 bg-white dark:bg-[#1E293B] px-6 py-4 border-b rounded-xl border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between gap-4 pt-4">
               <div className="flex items-center gap-4">
                 <button
@@ -439,6 +499,7 @@ export default function SPKForm({
           {/* FORM SECTIONS */}
           <form
             onSubmit={handleSubmit}
+            autoComplete="off"
             className="bg-white dark:bg-[#1E293B] p-4 sm:p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-8 mb-6 mt-5"
           >
             {/* ============================================ */}
@@ -511,6 +572,7 @@ export default function SPKForm({
                   <textarea
                     name="vendor_address"
                     value={formData.vendor_address}
+                    autoComplete="off"
                     onChange={onChange}
                     onFocus={() => handleFocusChange("preview-vendor-address")}
                     onBlur={handleBlurChange}
@@ -588,6 +650,7 @@ export default function SPKForm({
                       type="month"
                       name="campaign_start"
                       value={formData.campaign_start}
+                      autoComplete="off"
                       onChange={onChange}
                       onFocus={() =>
                         handleFocusChange("preview-campaign-period")
@@ -604,6 +667,7 @@ export default function SPKForm({
                       type="month"
                       name="campaign_end"
                       value={formData.campaign_end}
+                      autoComplete="off"
                       onChange={onChange}
                       onFocus={() =>
                         handleFocusChange("preview-campaign-period")
@@ -620,6 +684,7 @@ export default function SPKForm({
                   <select
                     name="collab_nature"
                     value={formData.collab_nature}
+                    autoComplete="off"
                     onChange={onChange}
                     onFocus={() => handleFocusChange("preview-collab-nature")}
                     onBlur={handleBlurChange}
@@ -660,6 +725,7 @@ export default function SPKForm({
                         <input
                           type="text"
                           value={talent.name}
+                          autoComplete="off"
                           onChange={(e) =>
                             onTalentChange(talent.id, e.target.value)
                           }
@@ -798,88 +864,90 @@ export default function SPKForm({
             {/* ============================================ */}
             {/* SECTION V: COMPETITORS */}
             {/* ============================================ */}
-            {formData.collab_nature === "Eksklusif" ? (
-              <section className="space-y-4 p-5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 animate-in fade-in duration-500">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                    <h4 className="font-bold text-sm uppercase tracking-wider dark:text-slate-100">
-                      Daftar Kompetitor
-                    </h4>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                    {formData.competitors?.length || 0}/10
-                  </span>
+            <section className="space-y-4 p-5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <h4 className="font-bold text-sm uppercase tracking-wider dark:text-slate-100">
+                    Daftar Kompetitor
+                  </h4>
                 </div>
+                <div className="flex items-center gap-2">
+                  {isCompetitorSectionOpen && (
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                      {formData.competitors?.length || 0}/10
+                    </span>
+                  )}
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform ${
+                      isCompetitorSectionOpen ? "rotate-180" : "rotate-0"
+                    } text-slate-400`}
+                  />
+                </div>
+              </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  {formData.competitors?.map(
-                    (competitor: any, index: number) => (
-                      <div
-                        key={competitor.id}
-                        className="relative group animate-in zoom-in-95 duration-200"
+              {isCompetitorSectionOpen ? (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {formData.competitors?.map(
+                      (competitor: any, index: number) => (
+                        <div
+                          key={competitor.id}
+                          className="relative group animate-in zoom-in-95 duration-200"
+                        >
+                          <input
+                            value={competitor.name}
+                            autoComplete="off"
+                            onChange={(e) =>
+                              onCompetitorChange(competitor.id, e.target.value)
+                            }
+                            onFocus={() =>
+                              handleFocusChange(`competitor-${competitor.id}`)
+                            }
+                            onBlur={handleBlurChange}
+                            placeholder={`Komp. ${index + 1}`}
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs outline-none focus:ring-2 focus:ring-[#007AFF]/20 bg-white dark:bg-slate-900 transition-all shadow-sm text-black dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-500"
+                          />
+
+                          {formData.competitors.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveSection("");
+                                onRemoveCompetitor(competitor.id);
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 z-10"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          )}
+                        </div>
+                      ),
+                    )}
+
+                    {formData.competitors?.length < 10 && (
+                      <button
+                        type="button"
+                        onClick={onAddCompetitor}
+                        className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl py-2 text-slate-400 dark:text-slate-500 hover:border-[#007AFF] hover:text-[#007AFF] hover:bg-white dark:hover:bg-slate-900 transition-all font-bold text-[10px] uppercase shadow-sm"
                       >
-                        <input
-                          value={competitor.name}
-                          onChange={(e) =>
-                            onCompetitorChange(competitor.id, e.target.value)
-                          }
-                          onFocus={() =>
-                            handleFocusChange(`competitor-${competitor.id}`)
-                          }
-                          onBlur={handleBlurChange}
-                          placeholder={`Komp. ${index + 1}`}
-                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs outline-none focus:ring-2 focus:ring-[#007AFF]/20 bg-white dark:bg-slate-900 transition-all shadow-sm text-black dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-500"
-                        />
-
-                        {formData.competitors.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveSection("");
-                              onRemoveCompetitor(competitor.id);
-                            }}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 z-10"
-                          >
-                            <Trash2 size={10} />
-                          </button>
-                        )}
-                      </div>
-                    ),
-                  )}
-
-                  {formData.competitors?.length < 10 && (
-                    <button
-                      type="button"
-                      onClick={onAddCompetitor}
-                      className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl py-2 text-slate-400 dark:text-slate-500 hover:border-[#007AFF] hover:text-[#007AFF] hover:bg-white dark:hover:bg-slate-900 transition-all font-bold text-[10px] uppercase shadow-sm"
-                    >
-                      <Plus size={14} />
-                    </button>
-                  )}
-                </div>
-
-                <p className="text-[9px] text-slate-500 dark:text-slate-400 italic">
-                  *Input kompetitor ini akan otomatis digabungkan ke dalam
-                  kontrak Eksklusif di PDF.
-                </p>
-              </section>
-            ) : (
-              <section className="space-y-4 p-5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 opacity-50 pointer-events-none">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <h4 className="font-bold text-sm uppercase tracking-wider dark:text-slate-100">
-                      Daftar Kompetitor
-                    </h4>
+                        <Plus size={14} />
+                      </button>
+                    )}
                   </div>
-                </div>
 
+                  <p className="text-[9px] text-slate-500 dark:text-slate-400 italic">
+                    *Input kompetitor ini akan otomatis digabungkan ke dalam
+                    kontrak Eksklusif di PDF.
+                  </p>
+                </>
+              ) : (
                 <p className="text-[10px] text-slate-600 dark:text-slate-400 italic bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
-                  ⓘ Kompetitor hanya tersedia untuk kerja sama{" "}
-                  <strong>Eksklusif</strong>. Pilih "Eksklusif" di atas untuk
-                  mengatur kompetitor.
+                  Section kompetitor tertutup. Ubah Jenis SPK ke
+                  <strong> Eksklusif</strong> untuk membuka section ini.
                 </p>
-              </section>
-            )}
+              )}
+            </section>
 
             {/* ============================================ */}
             {/* SECTION VI: PAYMENT & BANK */}
@@ -929,6 +997,7 @@ export default function SPKForm({
                         ? Number(formData.grand_total).toLocaleString("id-ID")
                         : ""
                     }
+                    autoComplete="off"
                     onChange={onChange}
                     onFocus={() => handleFocusChange("preview-grand-total")}
                     onBlur={handleBlurChange}
@@ -1075,9 +1144,25 @@ export default function SPKForm({
                     </svg>
                   </button>
 
-                  <span className="text-xs font-mono text-slate-600 dark:text-slate-400 min-w-12 text-center">
-                    {Math.round(zoom * 100)}%
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={zoomInput}
+                      onChange={(e) => handleZoomInputChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleZoomInputCommit(zoomInput);
+                          (e.target as HTMLInputElement).blur();
+                        }
+                      }}
+                      onBlur={() => handleZoomInputCommit(zoomInput)}
+                      min="10"
+                      max="200"
+                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-center bg-transparent outline-none w-12"
+                      placeholder="100"
+                    />
+                    <span className="text-xs text-slate-600 dark:text-slate-400">%</span>
+                  </div>
 
                   <button
                     type="button"
@@ -1118,7 +1203,7 @@ export default function SPKForm({
               {/* Preview Container with Zoom & Drag-to-Scroll */}
               <div
                 ref={scrollContainerRef}
-                className="flex-1 overflow-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg bg-gray-50 select-none preview-scroll-container"
+                className="flex-1 flex flex-col items-start justify-start overflow-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg bg-gray-50 select-none preview-scroll-container"
                 style={{
                   scrollbarWidth: "none", // Firefox
                   msOverflowStyle: "none", // IE/Edge
@@ -1127,6 +1212,7 @@ export default function SPKForm({
               >
                 {/* Zoom Canvas - FORCED WHITE WRAPPER untuk preview PDF */}
                 <div
+                  ref={previewCanvasRef}
                   className="bg-white transition-transform duration-200 relative"
                   style={{
                     minHeight: "2300px", // Enough height for full SPK document

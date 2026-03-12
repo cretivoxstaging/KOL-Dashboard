@@ -88,11 +88,11 @@ function DashboardContent() {
   }, [activeTab]);
 
   return (
-    <div className="flex h-screen w-screen bg-[#F0F4F8] overflow-x-hidden font-sans text-slate-700 relative">
+    <div className="flex h-screen w-screen bg-[#F0F4F8] dark:bg-[#0F172A] overflow-x-hidden font-sans text-slate-700 dark:text-slate-200 relative">
       {/* Tombol menu di header utama (mobile/tablet) */}
       <button
         onClick={() => setIsSidebarOpen(true)}
-        className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg transition-colors lg:hidden"
+        className="fixed top-4 left-4 z-50 p-2 bg-white dark:bg-[#1E293B] rounded-lg shadow-lg transition-colors lg:hidden"
         aria-label="Open menu"
         style={{ display: isSidebarOpen ? "none" : "block" }}
       >
@@ -121,12 +121,12 @@ function DashboardContent() {
 
       <main
         id="main-content"
-        className={`flex-1 w-full bg-[#F8FAFC] overflow-x-hidden ${activeTab === "tax" ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
+        className={`flex-1 w-full bg-[#F8FAFC] dark:bg-[#0F172A] overflow-x-hidden ${activeTab === "tax" ? "h-screen overflow-hidden" : "h-screen overflow-y-auto"}`}
       >
         {isLoading ? (
           <div className="flex flex-col h-full items-center justify-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1B3A5B]"></div>
-            <p className="text-slate-500 font-medium animate-pulse">Loading</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">Loading</p>
           </div>
         ) : (
           <>

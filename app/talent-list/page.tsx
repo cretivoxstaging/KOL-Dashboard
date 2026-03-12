@@ -66,11 +66,11 @@ function TalentListContent() {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen bg-[#F0F4F8] overflow-x-hidden font-sans text-slate-700 relative">
+    <div className="flex h-screen w-screen bg-[#F0F4F8] dark:bg-[#0F172A] overflow-x-hidden font-sans text-slate-700 dark:text-slate-300 relative">
       {/* Tombol menu di header utama (mobile/tablet) */}
       <button
         onClick={() => setIsSidebarOpen(true)}
-        className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg transition-colors lg:hidden"
+        className="fixed top-4 left-4 z-50 p-2 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg transition-colors lg:hidden"
         aria-label="Open menu"
         style={{ display: isSidebarOpen ? "none" : "block" }}
       >

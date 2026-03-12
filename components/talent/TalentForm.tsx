@@ -135,10 +135,10 @@ export default function TalentForm({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-100 p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[15px] w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+    <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-100 p-4 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700/80 rounded-[15px] w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
         {/* HEADER */}
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-[#1E293B] sticky top-0 z-10">
           <div>
             <h3 className="text-2xl font-bold text-[#1B3A5B]">
               {initialData ? "Edit Talent Profile" : "Add New Talent"}
@@ -146,7 +146,7 @@ export default function TalentForm({
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 dark:text-slate-300"
           >
             <X size={24} />
           </button>
@@ -174,7 +174,7 @@ export default function TalentForm({
                   Zodiac
                 </label>
                 <select
-                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white text-black"
+                  className="w-full px-4 py-2.5 border-2 border-slate-100 dark:border-slate-800 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white dark:bg-[#1E293B] text-black dark:text-slate-200"
                   value={formData.zodiac}
                   onChange={(e) =>
                     setFormData({ ...formData, zodiac: e.target.value })
@@ -195,7 +195,7 @@ export default function TalentForm({
                     "Aquarius",
                     "Pisces",
                   ].map((z) => (
-                    <option key={z} value={z}>
+                    <option key={z} value={z} className="bg-white dark:bg-[#1E293B] text-black dark:text-slate-200">
                       {z}
                     </option>
                   ))}
@@ -212,7 +212,7 @@ export default function TalentForm({
                   Religion
                 </label>
                 <select
-                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white text-black"
+                  className="w-full px-4 py-2.5 border-2 border-slate-100 dark:border-slate-800 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white dark:bg-[#1E293B] text-black dark:text-slate-200"
                   value={formData.agama}
                   onChange={(e) =>
                     setFormData({ ...formData, agama: e.target.value })
@@ -221,7 +221,7 @@ export default function TalentForm({
                 >
                   <option value="">Select Religion</option>
                   {RELIGION_OPTIONS.map((rel) => (
-                    <option key={rel} value={rel}>
+                    <option key={rel} value={rel} className="bg-white dark:bg-[#1E293B] text-black dark:text-slate-200">
                       {rel}
                     </option>
                   ))}
@@ -248,7 +248,7 @@ export default function TalentForm({
                   Gender
                 </label>
                 <select
-                  className="w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white text-black"
+                  className="w-full px-4 py-2.5 border-2 border-slate-100 dark:border-slate-800 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white dark:bg-[#1E293B] text-black dark:text-slate-200"
                   value={formData.gender}
                   onChange={(e) => {
                     const selectedGender = e.target.value;
@@ -271,9 +271,9 @@ export default function TalentForm({
                   Hijab Status
                 </label>
                 <select
-                  className={`w-full px-4 py-2.5 border-2 border-slate-100 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white text-black ${
+                  className={`w-full px-4 py-2.5 border-2 border-slate-100 dark:border-slate-800 rounded-xl focus:border-[#1B3A5B] outline-none transition-all text-sm bg-white dark:bg-[#1E293B] text-black dark:text-slate-200 ${
                     formData.gender === "Laki-laki"
-                      ? "bg-slate-50 cursor-not-allowed opacity-70"
+                      ? "bg-slate-50 dark:bg-slate-800/50 dark:text-slate-500 cursor-not-allowed opacity-70"
                       : ""
                   }`}
                   value={formData.hijab}
@@ -343,7 +343,7 @@ export default function TalentForm({
                 className={`text-[10px] font-bold px-3 py-1 rounded-lg border transition-all ${
                   showManual
                     ? "bg-orange-50 text-orange-600 border-orange-200"
-                    : "bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600"
+                    : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 hover:text-slate-600"
                 }`}
               >
                 {showManual ? "CLOSE MANUAL OVERRIDE" : "MANUAL DATA OVERRIDE"}
@@ -423,7 +423,7 @@ export default function TalentForm({
             )}
 
             {/* STATUS FIELD ONLY */}
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4 pt-4 border-t border-slate-50">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4 pt-4 border-t border-slate-50 dark:border-slate-800">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                   Status Talent
@@ -433,7 +433,7 @@ export default function TalentForm({
                   onChange={(e) =>
                     setFormData({ ...formData, status: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#1B3A5B]/10 outline-none bg-white shadow-sm transition-all text-black"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-sm focus:ring-2 focus:ring-[#1B3A5B]/10 dark:focus:ring-blue-500/50 outline-none bg-white dark:bg-[#1E293B] shadow-sm transition-all text-black dark:text-slate-200"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
@@ -463,7 +463,7 @@ export default function TalentForm({
         </div>
 
         {/* FOOTER ACTION */}
-        <div className="p-8 border-t border-slate-100 bg-slate-50 flex gap-4">
+        <div className="p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex gap-4">
           <button
             onClick={onClose}
             className="flex-1 py-4 bg-slate-400 text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -508,7 +508,7 @@ function Input({ label, type = "text", placeholder, value, onChange }: any) {
         placeholder={placeholder}
         value={displayValue}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-black bg-white"
+        className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 mt-1 text-sm focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/50 outline-none transition-all text-black dark:text-slate-200 bg-white dark:bg-[#1E293B]"
       />
     </div>
   );

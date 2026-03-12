@@ -240,66 +240,61 @@ export default function DashboardView({
   ];
 
   return (
-    <div className="animate-in fade-in duration-500 space-y-8">
+    <div className="w-full animate-in fade-in duration-500 space-y-6 dark:text-slate-200">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-[#1B3A5B]">
+        <h2 className="text-2xl font-bold text-[#1B3A5B] dark:text-slate-200">
           Executive Overview
         </h2>
       </div>
 
       {/* ROW 1: TOP STATS & TIERING */}
-      <div className="grid grid-cols-12 gap-4 mb-8 items-stretch">
+      <div className="grid grid-cols-12 gap-6 mb-8 items-stretch">
         {/* KOLOM KIRI: TOTAL & AVAILABILITY (Dijejerin Vertikal) */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
+        <div className="col-span-4 flex flex-col gap-6">
           {/* Card 1: Total Talents */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between h-full">
+          <div className="bg-white dark:bg-[#1E293B] p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between h-full">
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
                 Total Talents
               </p>
-              <div className="text-3xl font-black text-slate-800">
+              <div className="text-3xl font-black text-slate-800 dark:text-slate-200">
                 {talents.length}
               </div>
             </div>
-            <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
+              <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400">
               <Users size={24} />
             </div>
           </div>
 
-{/* Card 2: Data Distribution (Talent vs Influencer) */}
-          <div className="flex flex-col justify-center h-full">
-            <div className="flex items-center w-full">
-                            {/* Box Influencer */}
-              <div className="bg-white rounded-2xl border-slate-100 p-6 shadow-sm flex-1 flex flex-col items-center">
-                <span className="text-2xl font-black text-slate-800 mb-2">
-                  {talents.filter(t => 
-                    t.source?.toLowerCase() === "influencer/kol" || 
-                    t.source?.toLowerCase() === "artist/celebrity"
-                  ).length}
-                </span>
-                <span className="text-[10px] font-bold uppercase text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md">
-                  Influencer
-                </span>
-              </div>
-              {/* Box Talent */}
-              <div className="bg-white rounded-2xl border-slate-100 p-6 shadow-sm flex-1 flex flex-col items-center">
-                <span className="text-2xl font-black text-slate-800 mb-2">
-                  {talents.filter(t => t.source?.toLowerCase() === "talent").length}
-                </span>
-                <span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                  Talent
-                </span>
-              </div>
+          {/* Card 2 & 3: Influencer and Talent Cards Side by Side */}
+          <div className="flex gap-6">
+            <div className="bg-white dark:bg-[#1E293B] rounded-2xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm flex-1 flex flex-col items-center">
+              <span className="text-2xl font-black text-slate-800 dark:text-slate-200 mb-2">
+                {talents.filter(t => 
+                  t.source?.toLowerCase() === "influencer/kol" || 
+                  t.source?.toLowerCase() === "artist/celebrity"
+                ).length}
+              </span>
+              <span className="text-[10px] font-bold uppercase text-orange-600 bg-orange-50 dark:bg-orange-500/20 dark:text-orange-400 px-2 py-0.5 rounded-md">
+                Influencer
+              </span>
+            </div>
 
-              <div className="w-px h-10 bg-slate-100 mx-4 shrink-0" />
+            <div className="bg-white dark:bg-[#1E293B] rounded-2xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm flex-1 flex flex-col items-center">
+              <span className="text-2xl font-black text-slate-800 dark:text-slate-200 mb-2">
+                {talents.filter(t => t.source?.toLowerCase() === "talent").length}
+              </span>
+              <span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 dark:bg-blue-500/20 dark:text-blue-400 px-2 py-0.5 rounded-md">
+                Talent
+              </span>
             </div>
           </div>
         </div>
 
         {/* KOLOM KANAN: DUAL TIERING (Habisin Sisa Space ke Kanan) */}
-        <div className="col-span-12 lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-center">
+        <div className="col-span-8 bg-white dark:bg-[#1E293B] p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-center">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-sm font-bold text-slate-800">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
               Talent Tiering Composition
             </h3>
           </div>
@@ -316,16 +311,16 @@ export default function DashboardView({
                     <span className="text-[10px] font-bold text-slate-400 uppercase">
                       {tier}
                     </span>
-                    <span className="text-xs font-black text-slate-800">
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
                       {(igTiers as any)[tier]}{" "}
-                      <span className="text-[10px] text-slate-300 font-bold">
+                      <span className="text-[10px] text-slate-300 dark:text-slate-500 font-bold">
                         TALENTS
                       </span>
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-50 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-pink-500 transition-all duration-700"
+                      className="h-full bg-pink-500 dark:bg-pink-400 transition-all duration-700"
                       style={{
                         width: `${((igTiers as any)[tier] / total) * 100}%`,
                       }}
@@ -337,7 +332,7 @@ export default function DashboardView({
 
             {/* RENDER TIKTOK COLUMN */}
             <div className="space-y-4">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 w-fit">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-fit">
                 <SiTiktok size={14} />
                 TikTok
               </span>
@@ -347,16 +342,16 @@ export default function DashboardView({
                     <span className="text-[10px] font-bold text-slate-400 uppercase">
                       {tier}
                     </span>
-                    <span className="text-xs font-black text-slate-800">
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
                       {(ttTiers as any)[tier]}{" "}
-                      <span className="text-[10px] text-slate-300 font-bold">
+                      <span className="text-[10px] text-slate-300 dark:text-slate-500 font-bold">
                         TALENTS
                       </span>
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-50 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-slate-800 transition-all duration-700"
+                      className="h-full bg-slate-800 dark:bg-slate-400 transition-all duration-700"
                       style={{
                         width: `${((ttTiers as any)[tier] / total) * 100}%`,
                       }}
@@ -369,26 +364,26 @@ export default function DashboardView({
         </div>
       </div>
       {/* ROW 3: SOURCE, GENDER, & RELIGION */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-4">
         {/* 1. SOURCE DISTRIBUTION */}
-        <div className="col-span-12 lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
+        <div className="col-span-12 lg:col-span-4 bg-white dark:bg-[#1E293B] p-5 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col h-full">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-bold text-slate-800">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
               Source Distribution
             </h3>
-            <Compass size={16} className="text-slate-300" />
+            <Compass size={16} className="text-slate-300 dark:text-slate-500" />
           </div>
 
-          <div className="h-64 relative">
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
-              <h4 className="text-lg font-black text-slate-800">
+          <div className="h-64 relative isolate">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4 z-50">
+              <h4 className="text-lg font-black text-slate-800 dark:text-white">
                 {sourceData.length}
               </h4>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">
+              <p className="text-[8px] font-bold text-slate-500 dark:text-slate-200 uppercase">
                 Sources
               </p>
             </div>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" className="relative z-0">
               <PieChart>
                 <Pie
                   data={sourceData}
@@ -415,7 +410,7 @@ export default function DashboardView({
             </ResponsiveContainer>
           </div>
 
-          <div className="mt-auto pt-4 border-t border-slate-50">
+          <div className="mt-auto pt-4 border-t border-slate-50 dark:border-slate-700">
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-3">
               {sourceData.map((entry, index) => (
                 <div
@@ -426,13 +421,13 @@ export default function DashboardView({
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: COLORS[index % COLORS.length] }}
                   />
-                  <span className="text-[10px] font-bold text-slate-600">
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
                     {entry.name}
                   </span>
                 </div>
               ))}
             </div>
-            <div className="flex justify-between items-center bg-slate-50 rounded-xl px-3 py-2">
+            <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2">
               <p className="text-[9px] font-bold text-slate-400 uppercase">
                 Top Source
               </p>
@@ -444,24 +439,24 @@ export default function DashboardView({
         </div>
 
         {/* 2. GENDER DISTRIBUTION */}
-        <div className="col-span-12 lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
+        <div className="col-span-12 lg:col-span-4 bg-white dark:bg-[#1E293B] p-5 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col h-full">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-bold text-slate-800">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
               Gender Distribution
             </h3>
-            <Users size={16} className="text-slate-300" />
+            <Users size={16} className="text-slate-300 dark:text-slate-500" />
           </div>
 
-          <div className="h-64 relative">
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
-              <h4 className="text-lg font-black text-slate-800">
+          <div className="h-64 relative isolate">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4 z-50">
+              <h4 className="text-lg font-black text-slate-800 dark:text-white">
                 {genderData.length}
               </h4>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">
+              <p className="text-[8px] font-bold text-slate-500 dark:text-slate-200 uppercase">
                 Groups
               </p>
             </div>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" className="relative z-0">
               <PieChart>
                 <Pie
                   data={genderData}
@@ -488,7 +483,7 @@ export default function DashboardView({
             </ResponsiveContainer>
           </div>
 
-          <div className="mt-auto pt-4 border-t border-slate-50">
+          <div className="mt-auto pt-4 border-t border-slate-50 dark:border-slate-700">
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-3">
               {genderData.map((entry, index) => (
                 <div
@@ -501,13 +496,13 @@ export default function DashboardView({
                       backgroundColor: COLORS[(index + 1) % COLORS.length],
                     }}
                   />
-                  <span className="text-[10px] font-bold text-slate-600">
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
                     {entry.name}
                   </span>
                 </div>
               ))}
             </div>
-            <div className="flex justify-between items-center bg-slate-50 rounded-xl px-3 py-2">
+            <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2">
               <p className="text-[9px] font-bold text-slate-400 uppercase">
                 Dominant
               </p>
@@ -519,24 +514,24 @@ export default function DashboardView({
         </div>
 
         {/* 3. RELIGION DISTRIBUTION */}
-        <div className="col-span-12 lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
+        <div className="col-span-12 lg:col-span-4 bg-white dark:bg-[#1E293B] p-5 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col h-full">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-bold text-slate-800">
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
               Religion Distribution
             </h3>
-            <UserCheck size={16} className="text-slate-300" />
+            <UserCheck size={16} className="text-slate-300 dark:text-slate-500" />
           </div>
 
-          <div className="h-64 relative">
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
-              <h4 className="text-lg font-black text-slate-800">
+          <div className="h-64 relative isolate">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4 z-50">
+              <h4 className="text-lg font-black text-slate-800 dark:text-white">
                 {religionData.length}
               </h4>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">
+              <p className="text-[8px] font-bold text-slate-500 dark:text-slate-200 uppercase">
                 Faiths
               </p>
             </div>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" className="relative z-0">
               <PieChart>
                 <Pie
                   data={religionData}
@@ -563,7 +558,7 @@ export default function DashboardView({
             </ResponsiveContainer>
           </div>
 
-          <div className="mt-auto pt-4 border-t border-slate-50">
+          <div className="mt-auto pt-4 border-t border-slate-50 dark:border-slate-700">
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-3">
               {religionData.map((entry, index) => (
                 <div
@@ -576,13 +571,13 @@ export default function DashboardView({
                       backgroundColor: COLORS[(index + 2) % COLORS.length],
                     }}
                   />
-                  <span className="text-[10px] font-bold text-slate-600">
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
                     {entry.name}
                   </span>
                 </div>
               ))}
             </div>
-            <div className="flex justify-between items-center bg-slate-50 rounded-xl px-3 py-2">
+            <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2">
               <p className="text-[9px] font-bold text-slate-400 uppercase">
                 Major
               </p>

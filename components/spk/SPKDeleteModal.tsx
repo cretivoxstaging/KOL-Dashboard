@@ -47,36 +47,28 @@ export default function SPKDeleteModal({
   }
 
   return (
-    <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-      {/* Modal Container */}
-      <div className="bg-white rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+    <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+      <div className="bg-white dark:bg-[#1E293B] rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in duration-300">
         <div className="p-8 space-y-6">
-          {/* ============================================ */}
-          {/* MODAL HEADER */}
-          {/* ============================================ */}
           <div className="flex items-center gap-3 text-red-600">
             <div className="p-3 bg-red-50 rounded-2xl">
               <Trash2 size={24} />
             </div>
-            <h3 className="text-xl font-bold text-[#1B3A5B]">Delete SPK</h3>
+            <h3 className="text-xl font-bold text-[#1B3A5B] dark:text-slate-200">
+              Delete SPK
+            </h3>
           </div>
 
-          {/* ============================================ */}
-          {/* WARNING MESSAGE */}
-          {/* ============================================ */}
-          <div className="bg-red-50 border border-red-100 p-4 rounded-2xl">
-            <p className="text-red-800 text-xs leading-relaxed">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 p-4 rounded-2xl">
+            <p className="text-red-800 dark:text-red-300 text-xs leading-relaxed">
               <span className="font-bold">Warning:</span> This action cannot be
-              undone. Data for <b>{item?.talent}</b> on brand{" "}
-              <b>{item?.brand}</b> will be permanently removed.
+              undone. Data for <b>{item?.talent}</b> on brand <b>{item?.brand}</b>
+              will be permanently removed.
             </p>
           </div>
 
-          {/* ============================================ */}
-          {/* CONFIRMATION INPUT */}
-          {/* ============================================ */}
           <div className="space-y-3">
-            <label className="text-sm font-bold text-slate-700">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
               Type <span className="text-red-600">delete</span> to confirm:
             </label>
             <input
@@ -84,27 +76,21 @@ export default function SPKDeleteModal({
               placeholder="Type 'delete' here..."
               value={confirmText}
               onChange={(e) => onConfirmTextChange(e.target.value)}
-              className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 outline-none focus:ring-4 focus:ring-red-500/5 focus:border-red-200 transition-all text-sm text-black bg-white"
+              className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 outline-none focus:ring-4 focus:ring-red-500/5 focus:border-red-200 transition-all text-sm text-black dark:text-white bg-white dark:bg-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
           </div>
 
-          {/* ============================================ */}
-          {/* ACTION BUTTONS */}
-          {/* ============================================ */}
           <div className="grid grid-cols-2 gap-3 pt-2">
-            {/* Cancel Button */}
             <button
               onClick={onClose}
-              className="py-3.5 rounded-2xl font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 transition-all text-sm"
+              className="py-3.5 rounded-2xl font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm"
             >
               Cancel
             </button>
-
-            {/* Delete Button */}
             <button
               disabled={confirmText.toLowerCase() !== "delete" || isLoading}
               onClick={onDelete}
-              className="py-3.5 rounded-2xl font-bold bg-red-500 hover:bg-red-600 text-white disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-red-200"
+              className="py-3.5 rounded-2xl font-bold bg-red-500 hover:bg-red-600 text-white disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm shadow-lg"
             >
               <Trash2 size={18} />
               {isLoading ? "Deleting..." : "Delete"}

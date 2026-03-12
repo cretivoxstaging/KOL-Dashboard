@@ -19,21 +19,68 @@ export const generateHTML = (spkData: any): string => {
     return new Intl.NumberFormat("id-ID").format(numValue || 0);
   };
 
-  // Format date string for display
+  // Format date string to Indonesian format
+  const formatDateToIndonesian = (dateStr: string, type: 'month' | 'full' = 'month'): string => {
+    if (!dateStr || dateStr.trim() === "") return "";
+
+    const bulanIndonesia = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+
+    try {
+      if (type === "month") {
+        // Format: YYYY-MM => "Januari 2026"
+        const parts = dateStr.split("-");
+        if (parts.length >= 2) {
+          const bulan = parseInt(parts[1]);
+          const tahun = parts[0];
+          if (bulan >= 1 && bulan <= 12) {
+            return `${bulanIndonesia[bulan - 1]} ${tahun}`;
+          }
+        }
+      } else if (type === "full") {
+        // Format: YYYY-MM-DD => "27 Januari 2026" atau YYYY-MM-DD HH:MM => "27 Januari 2026"
+        const cleanDate = dateStr.split(" ")[0]; // Remove time part if exists
+        const parts = cleanDate.split("-");
+        if (parts.length >= 3) {
+          const hari = parseInt(parts[2]);
+          const bulan = parseInt(parts[1]);
+          const tahun = parts[0];
+          if (bulan >= 1 && bulan <= 12 && hari >= 1 && hari <= 31) {
+            return `${hari} ${bulanIndonesia[bulan - 1]} ${tahun}`;
+          }
+        }
+      }
+    } catch (e) {
+      // Fallback jika parsing error
+    }
+
+    return "";
+  };
+
+  // Format date string for display (fallback)
   const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return "[Tanggal]";
-    // Assume format: YYYY-MM or DD/MM/YYYY
-    return dateStr;
+    // Try to format first
+    const formatted = formatDateToIndonesian(dateStr, "full");
+    return formatted || dateStr;
   };
 
   // Build campaign period string
   const campaignPeriod = (() => {
     const start = spkData.campaign_start || "";
     const end = spkData.campaign_end || "";
-    if (start && end) {
-      return `${start} - ${end}`;
+
+    const startFormatted = formatDateToIndonesian(start, "month");
+    const endFormatted = formatDateToIndonesian(end, "month");
+
+    if (startFormatted && endFormatted) {
+      return startFormatted === endFormatted ? startFormatted : `${startFormatted} - ${endFormatted}`;
     }
-    return start || end || "[Periode Kampanye]";
+    if (startFormatted) return startFormatted;
+    if (endFormatted) return endFormatted;
+    return "[Periode Kampanye]";
   })();
 
   // ========== BUILD SOW TABLE (rowsHtml) ==========
@@ -347,7 +394,7 @@ export const generateHTML = (spkData: any): string => {
         <td colspan="4" style="padding: 8px; text-align: justify">
           Pembayaran <strong>secara penuh, yakni Rp ${formatCurrency(spkData.grand_total || 0)}</strong>
           (${spkData.grand_total_words || "[Terbilang]"} rupiah)
-          yang dibayarkan maksimal pada tanggal <span id="preview-payment-date">${spkData.payment_date || "[Tanggal]"}</span>.
+          yang dibayarkan maksimal pada tanggal <span id="preview-payment-date">${formatDateToIndonesian(spkData.payment_date, "full") || "[Tanggal]"}</span>.
         </td>
       </tr>
     `;
@@ -389,6 +436,8 @@ export const generateHTML = (spkData: any): string => {
         margin: 0;
         padding: 0;
         overflow-x: auto;
+        min-width: 210mm;
+        width: 100%;
       }
 
       .header-logo {
@@ -487,13 +536,13 @@ export const generateHTML = (spkData: any): string => {
 
       table.word-table {
         width: 100%;
-        min-width: 900px;
+        min-width: 210mm;
         border-collapse: collapse;
         margin-bottom: 5px;
       }
       table.word-table th,
       table.word-table td {
-        border: 1pt solid black;
+        border: 1pt solid #000 !important;
         padding: 4px 8px;
         vertical-align: top;
         text-align: left;
@@ -534,8 +583,10 @@ export const generateHTML = (spkData: any): string => {
       .active-highlight {
         background-color: #fef08a !important;
         transition: background-color 0.3s ease;
+      }
+
+      .active-highlight-start {
         scroll-margin-left: 24px;
-        scroll-margin-right: 24px;
       }
     </style>
   </head>
@@ -566,7 +617,7 @@ export const generateHTML = (spkData: any): string => {
               <div class="opening-text">
                 Surat Perjanjian Kerjasama Jasa ("<strong>SPK</strong>") ini dibuat di
                 Jakarta, pada tanggal
-                <strong>${spkData.created_at || formatDateDisplay(spkData.payment_date) || "[Tanggal]"}</strong> oleh dan antara
+                <strong>${spkData.created_at || formatDateToIndonesian(spkData.payment_date, "full") || "[Tanggal]"}</strong> oleh dan antara
                 <strong>PT. SUARA KREATIF MUDA</strong>, sebuah perusahaan yang
                 berkedudukan di Gedung OBE lt.3 Lois Jeans, Jl. Balap Sepeda No.6B, Rawamangun, Gadung, Kec. Pulo, Kota Jakarta Timur, Daerah Khusus Ibukota Jakarta 13220 untuk selanjutnya disebut "<strong>Pihak Pertama</strong>"; dengan pihak sebagai berikut:
               </div>
@@ -648,7 +699,7 @@ export const generateHTML = (spkData: any): string => {
                 <tr>
                   <td class="label-cell">3.</td>
                   <td class="field-name">Jenis Kerjasama:</td>
-                  <td id="preview-collab-type" class="background-yellow">${spkData.collab_type || "[Jenis Kolaborasi]"}</td>
+                  <td id="preview-jenis-kerjasama" class="background-yellow">${spkData.collab_type || "[Jenis Kolaborasi]"}</td>
                 </tr>
                 <tr>
                   <td class="label-cell">4.</td>
@@ -755,6 +806,7 @@ export const generateHTML = (spkData: any): string => {
         var allHighlighted = document.querySelectorAll('.active-highlight');
         for (var i = 0; i < allHighlighted.length; i++) {
           allHighlighted[i].classList.remove('active-highlight');
+          allHighlighted[i].classList.remove('active-highlight-start');
         }
         
         if (activeSection) {
@@ -771,9 +823,20 @@ export const generateHTML = (spkData: any): string => {
               if (element) {
                 // Add highlight class
                 element.classList.add('active-highlight');
-                
-                // Conditional horizontal scroll: center for wide SOW columns, start for other sections
-                var inlineAlignment = (activeSection.indexOf('sow') !== -1 || activeSection.indexOf('col') !== -1) 
+                var normalizedSection = String(activeSection).toLowerCase();
+
+                // Strict center only for table-like sections (SOW/description/keterangan)
+                var shouldCenter =
+                  normalizedSection.indexOf('sow') !== -1 ||
+                  normalizedSection.indexOf('description') !== -1 ||
+                  normalizedSection.indexOf('keterangan') !== -1;
+
+                // Start for identity/single-line fields, with left padding offset
+                if (!shouldCenter) {
+                  element.classList.add('active-highlight-start');
+                }
+
+                var inlineAlignment = shouldCenter
                   ? 'center' 
                   : 'start';
                 
@@ -797,9 +860,20 @@ export const generateHTML = (spkData: any): string => {
               if (element) {
                 // Add highlight class
                 element.classList.add('active-highlight');
-                
-                // Conditional horizontal scroll: center for wide SOW columns, start for other sections
-                var inlineAlignment = (activeSection.indexOf('sow') !== -1 || activeSection.indexOf('col') !== -1) 
+                var normalizedSection = String(activeSection).toLowerCase();
+
+                // Strict center only for table-like sections (SOW/description/keterangan)
+                var shouldCenter =
+                  normalizedSection.indexOf('sow') !== -1 ||
+                  normalizedSection.indexOf('description') !== -1 ||
+                  normalizedSection.indexOf('keterangan') !== -1;
+
+                // Start for identity/single-line fields, with left padding offset
+                if (!shouldCenter) {
+                  element.classList.add('active-highlight-start');
+                }
+
+                var inlineAlignment = shouldCenter
                   ? 'center' 
                   : 'start';
                 
@@ -812,6 +886,41 @@ export const generateHTML = (spkData: any): string => {
             }, 0);
           }
         }
+      })();
+    </script>
+    
+    <script>
+      // Send document height to parent for dynamic sizing
+      (function() {
+        function sendHeight() {
+          var height = Math.max(
+            document.body.scrollHeight,
+            document.body.offsetHeight,
+            document.documentElement.clientHeight,
+            document.documentElement.scrollHeight,
+            document.documentElement.offsetHeight
+          );
+          
+          window.parent.postMessage({
+            type: 'spk-iframe-height',
+            height: height
+          }, '*');
+        }
+        
+        // Send height on load
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', sendHeight);
+        } else {
+          sendHeight();
+        }
+        
+        // Resend on window load (images, etc)
+        window.addEventListener('load', sendHeight);
+        
+        // Also send periodically in case content changes
+        setTimeout(sendHeight, 100);
+        setTimeout(sendHeight, 500);
+        setTimeout(sendHeight, 1000);
       })();
     </script>
   </body>

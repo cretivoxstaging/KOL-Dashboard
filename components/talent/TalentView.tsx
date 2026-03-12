@@ -248,7 +248,7 @@ export default function TalentView({
 
     return (
       <th
-        className={`p-5 cursor-pointer hover:bg-slate-300 transition-colors ${align === "center" ? "text-center" : ""}`}
+        className={`p-5 cursor-pointer hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors ${align === "center" ? "text-center" : ""}`}
         onClick={() =>
           onSort(
             isActive && sortOrder === "desc" ? `${field}-asc` : `${field}-desc`,
@@ -263,8 +263,8 @@ export default function TalentView({
             <span
               className={
                 isActive && sortOrder === "asc"
-                  ? "text-blue-600"
-                  : "text-slate-400"
+                  ? "text-blue-600 dark:text-blue-400"
+                  : "text-slate-400 dark:text-slate-500"
               }
             >
               ▲
@@ -272,8 +272,8 @@ export default function TalentView({
             <span
               className={
                 isActive && sortOrder === "desc"
-                  ? "text-blue-600"
-                  : "text-slate-400"
+                  ? "text-blue-600 dark:text-blue-400"
+                  : "text-slate-400 dark:text-slate-500"
               }
             >
               ▼
@@ -286,7 +286,7 @@ export default function TalentView({
 
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-500">
-      <h1 className="text-2xl font-bold mb-6 text-slate-800">
+      <h1 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-200">
         Influencer Management
       </h1>
 
@@ -297,13 +297,13 @@ export default function TalentView({
           <div className="flex gap-3 items-center flex-1 w-full">
             <div className="relative flex-1 max-w-60">
               <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-800"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-800 dark:text-slate-400"
                 size={16}
               />
               <input
                 type="text"
-                placeholder="Search name, category, ethnic, or IG..."
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#1B3A5B]/10 outline-none transition-all bg-white shadow-sm text-black"
+                placeholder="Search name, category, or socials..."
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-sm focus:ring-2 focus:ring-[#1B3A5B]/10 dark:focus:ring-blue-500/50 outline-none transition-all bg-white dark:bg-[#1E293B] shadow-sm text-black dark:text-slate-200"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -354,7 +354,7 @@ export default function TalentView({
             <button
               onClick={handleRealTimeRefresh}
               disabled={isLoading}
-              className="flex items-center gap-2 bg-white hover:bg-slate-100 hover:scale-110 text-slate-600 px-4 py-2.5 rounded-xl font-bold text-sm border border-slate-200 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 bg-white dark:bg-[#1E293B] hover:bg-slate-100 dark:hover:bg-slate-800 hover:scale-110 text-slate-600 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-800 shadow-sm transition-all active:scale-95 disabled:opacity-50"
               title="Refresh Data"
             >
               <RefreshCw
@@ -400,7 +400,7 @@ export default function TalentView({
         </div>
 
         {/* BARIS 2: ADVANCED FILTERS */}
-        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100">
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
           {isFilterActive && (
             <button
               onClick={() => {
@@ -421,10 +421,10 @@ export default function TalentView({
       </div>
 
       {/* TABLE SECTION */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-[#1E293B] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-200 text-slate-800 text-[12px] uppercase tracking-widest font-bold">
+          <thead className="bg-slate-200 dark:bg-[#1E293B] border-b border-slate-100 dark:border-slate-700">
+            <tr className="bg-slate-200 dark:bg-[#1E293B] text-slate-800 dark:text-slate-200 text-[12px] uppercase tracking-widest font-bold">
               <th className="p-5 text-center w-16">#</th>
               <SortableHeader
                 label="Talent & Socials"
@@ -471,7 +471,7 @@ export default function TalentView({
               <tr>
                 <td
                   colSpan={7}
-                  className="p-20 text-center text-slate-400 italic"
+                  className="p-20 text-center text-slate-400 dark:text-slate-500 italic"
                 >
                   No talents found matching your criteria.
                 </td>
@@ -506,7 +506,7 @@ export default function TalentView({
               setRowsPerPage(Number(e.target.value));
               setCurrentPage(1);
             }}
-            className="bg-white border border-slate-200 text-black text-xs font-bold rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500/10 shadow-sm cursor-pointer"
+            className="bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-800 text-black dark:text-slate-200 text-xs font-bold rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500/10 shadow-sm cursor-pointer"
           >
             {[10, 20, 50, 100, 200].map((size) => (
               <option key={size} value={size}>
@@ -526,7 +526,7 @@ export default function TalentView({
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
-            className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             Prev
           </button>
@@ -557,7 +557,7 @@ export default function TalentView({
                   className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
                     currentPage === pageNum
                       ? "bg-[#1B3A5B] text-white shadow-md shadow-[#1B3A5B]/20"
-                      : "text-slate-500 hover:bg-slate-100"
+                      : "text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
                   {pageNum}
@@ -571,7 +571,7 @@ export default function TalentView({
               setCurrentPage((prev) => Math.min(prev + 1, totalPages))
             }
             disabled={currentPage === totalPages || totalPages === 0}
-            className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             Next
           </button>
@@ -579,8 +579,8 @@ export default function TalentView({
       </div>
       {/* ================= MODAL DELETE VERIFICATION ================= */}
       {talentToDelete && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-100 animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-100 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-[#1E293B] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-slate-800">
             <div className="p-6">
               <div className="flex items-center gap-3 text-red-600 mb-4">
                 <Trash2 size={24} />
@@ -594,7 +594,7 @@ export default function TalentView({
                 </p>
               </div>
 
-              <div className="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 mb-6 border border-slate-100 dark:border-slate-800">
                 <p className="text-xs text-slate-500 uppercase font-bold mb-2">
                   Employee to be deleted:
                 </p>
@@ -612,12 +612,12 @@ export default function TalentView({
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm font-bold text-slate-700">
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Type <span className="text-red-600">delete</span> to confirm:
                 </label>
                 <input
                   type="text"
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium text-black bg-white"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:focus:ring-blue-500/50 outline-none transition-all font-medium text-black dark:text-slate-200 bg-white dark:bg-[#1E293B]"
                   placeholder="Type 'delete' here"
                   value={deleteConfirmation}
                   onChange={(e) => setDeleteConfirmation(e.target.value)}
@@ -625,13 +625,13 @@ export default function TalentView({
               </div>
             </div>
 
-            <div className="p-6 bg-slate-50 flex gap-3">
+            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex gap-3">
               <button
                 onClick={() => {
                   setTalentToDelete(null);
                   setDeleteConfirmation("");
                 }}
-                className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 transition-all"
+                className="flex-1 px-6 py-3 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
               >
                 Cancel
               </button>

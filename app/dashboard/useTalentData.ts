@@ -177,7 +177,14 @@ export function useTalentData() {
     const res = await fetch(`/api/Talent/${id}`, {
       method: "DELETE",
     });
-    if (!res.ok) throw new Error("Gagal menghapus talent");
+
+    if (!res.ok) {
+      const errorPayload = await res.json().catch(() => ({}));
+      const errorMessage =
+        errorPayload?.message || errorPayload?.error || "Gagal menghapus talent";
+      throw new Error(errorMessage);
+    }
+
     return res.json();
   };
 
@@ -361,11 +368,22 @@ export function useTalentData() {
   };
 
   const handleDeleteTalent = async (id: number) => {
+    const previousTalents = talents;
+
     try {
       setIsLoading(true);
+      console.log("[Talent Delete] request id:", id);
+
+      setTalents((prevTalents) =>
+        prevTalents.filter((talent) => talent.id !== id),
+      );
+
       await deleteTalent(id);
-      await loadTalents();
+      console.log("[Talent Delete] success id:", id);
     } catch (error: any) {
+      setTalents(previousTalents);
+      console.log("[Talent Delete] error:", error);
+      alert("Gagal menghapus talent: " + (error?.message || "Unknown error"));
     } finally {
       setIsLoading(false);
     }

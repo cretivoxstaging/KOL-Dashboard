@@ -52,7 +52,7 @@ interface TalentTableProps {
   selectedSource: string;
   setSelectedSource: (source: string) => void;
   filteredAndSortedTalents: Talent[];
-  onDelete: (id: number) => void;
+  onDelete: (id: number) => Promise<void>;
   onUpdate: (talent: Talent) => void;
   onRefresh: () => void;
   isSidebarOpen: boolean;
@@ -91,7 +91,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [talentToDelete, setTalentToDelete] = useState<Talent | null>(null);
-  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+  const [confirmationText, setConfirmationText] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [editingTalent, setEditingTalent] = useState<Talent | null>(null);
@@ -234,23 +234,26 @@ const TalentTable: React.FC<TalentTableProps> = ({
 
   const handleDeleteRequest = (talent: Talent) => {
     setTalentToDelete(talent);
-    setDeleteConfirmationText("");
+    setConfirmationText("");
     setShowDeleteModal(true);
     setOpenDropdown(null);
   };
 
-  const handleConfirmDelete = () => {
-    if (!talentToDelete) return;
-
-    const expectedName = talentToDelete.name?.trim() || "";
-    if (expectedName && deleteConfirmationText.trim() !== expectedName) {
+  const handleConfirmDelete = async () => {
+    if (confirmationText !== "delete") {
       return;
     }
 
-    onDelete(talentToDelete.id);
+    const selectedTalentId = talentToDelete?.id;
+    if (selectedTalentId === null || selectedTalentId === undefined) {
+      console.log("[Talent Delete] Missing selected talent id on confirm");
+      return;
+    }
+
+    await onDelete(selectedTalentId);
     setShowDeleteModal(false);
     setTalentToDelete(null);
-    setDeleteConfirmationText("");
+    setConfirmationText("");
   };
 
   const handleManualSync = async (talent: Talent) => {
@@ -884,16 +887,15 @@ const TalentTable: React.FC<TalentTableProps> = ({
 
             {/* Input Confirmation */}
             <div className="space-y-3 mb-8">
-              <label className="text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">
-                Ketik <span className="text-red-600 italic">delete</span> untuk
-                konfirmasi:
-              </label>
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  Type <span className="text-red-600">delete</span> to confirm:
+                </label>
               <input
                 type="text"
-                value={deleteConfirmationText}
-                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                value={confirmationText}
+                onChange={(e) => setConfirmationText(e.target.value)}
                 placeholder="delete"
-                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1E293B] text-sm font-bold text-slate-700 dark:text-slate-300 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-500"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1E293B] px-4 py-3 text-sm text-slate-700 dark:text-slate-200 outline-none transition-all focus:border-slate-500 dark:focus:border-slate-500"
               />
             </div>
 
@@ -903,7 +905,7 @@ const TalentTable: React.FC<TalentTableProps> = ({
                 onClick={() => {
                   setShowDeleteModal(false);
                   setTalentToDelete(null);
-                  setDeleteConfirmationText("");
+                  setConfirmationText("");
                 }}
                 className="flex-1 py-4 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
               >
@@ -911,12 +913,11 @@ const TalentTable: React.FC<TalentTableProps> = ({
               </button>
               <button
                 onClick={handleConfirmDelete}
-                // LOGIKA: Cuma aktif kalau user ngetik "delete" persis
-                disabled={deleteConfirmationText.toLowerCase() !== "delete"}
-                className="flex-[1.5] py-4 bg-red-500 text-white rounded-2xl font-black text-sm shadow-lg shadow-red-200 hover:bg-red-600 transition-all disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95"
+                disabled={confirmationText !== "delete"}
+                className="flex-[1.5] py-4 bg-red-500 text-white rounded-2xl font-black text-sm shadow-lg shadow-red-200 hover:bg-red-600 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-500"
               >
                 <Trash2 size={16} />
-                Delete Talent
+                Delete
               </button>
             </div>
           </div>

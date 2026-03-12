@@ -11,7 +11,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
+import { dispatchSPKResetEvent } from "@/app/utils/spkFormEvents";
 
 const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -21,28 +21,6 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string>("");
   const [lockoutTime, setLockoutTime] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Sync lockoutTime with backend on mount (POST, cek blokir)
-  useEffect(() => {
-    const checkLockout = async () => {
-      try {
-        const res = await fetch("/api/login/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        if (res.status === 429) {
-          const data = await res.json();
-          if (typeof data.retryAfter === "number" && data.retryAfter > 0) {
-            setLockoutTime(data.retryAfter);
-          }
-        }
-      } catch (e) {
-        // ignore
-      }
-    };
-    checkLockout();
-  }, []);
 
   useEffect(() => {
     if (lockoutTime <= 0) return;
@@ -86,6 +64,8 @@ const LoginPage: React.FC = () => {
       }
 
       if (res.ok) {
+        dispatchSPKResetEvent();
+        
         router.push("/dashboard");
       } else {
         // Tampilkan pesan error dari server atau fallback
@@ -108,9 +88,8 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#E9EDF0] dark:bg-[#0F172A]">
-      {/* Kontainer Utama */}
-      <div className="grow flex items-center justify-center p-4 relative">
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#E9EDF0] dark:bg-[#0F172A] p-4">
+      <div className="relative w-full max-w-md">
         {/* Overlay Lockout */}
         {lockoutTime > 0 && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 dark:bg-slate-900/80 backdrop-blur-md rounded-lg">
@@ -126,7 +105,7 @@ const LoginPage: React.FC = () => {
           </div>
         )}
         <div
-          className={`bg-black dark:bg-[#1E293B] p-12 rounded-lg shadow-sm w-full max-w-md border border-gray-200 dark:border-slate-700 transition-all ${lockoutTime > 0 ? "blur-sm pointer-events-none" : ""}`}
+          className={`bg-black dark:bg-[#1E293B] p-12 rounded-lg shadow-sm w-full border border-gray-200 dark:border-slate-700 transition-all ${lockoutTime > 0 ? "blur-sm pointer-events-none" : ""}`}
         >
           <h1 className="text-3xl font-semibold text-white text-center mb-10">
             Login
@@ -151,7 +130,7 @@ const LoginPage: React.FC = () => {
 
             {/* --- BAGIAN PASSWORD --- */}
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-white font-semibold text-sm">
+              <label className="flex items-center gap-2 text-white dark:text-slate-200 font-semibold text-sm">
                 <Lock className="h-4 w-4" />
                 <span>Password</span>
               </label>

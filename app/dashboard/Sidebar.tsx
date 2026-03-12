@@ -13,6 +13,7 @@ import {
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { useDarkMode } from "@/app/DarkModeContext";
+import { dispatchSPKResetEvent } from "@/app/utils/spkFormEvents";
 
 interface SidebarProps {
   activeTab: string;
@@ -58,6 +59,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleLogout = async () => {
     try {
+      dispatchSPKResetEvent();
+      
       await fetch("/api/logout", { method: "POST" });
       Cookies.remove("auth_token");
       router.push("/login");

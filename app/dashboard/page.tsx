@@ -232,12 +232,12 @@ function DashboardContent() {
               </div>
             )}
 
-            {/* SPK View */}
-            {activeTab === "SPK" && (
-              <div className="p-3 sm:p-4 md:p-6 lg:p-8">
-                <SPKview spkList={spkList} fetchSPK={fetchSPK} />
-              </div>
-            )}
+            {/* SPK View (tetap mounted agar state in-memory tidak hilang saat pindah tab) */}
+            <div
+              className={`${activeTab === "SPK" ? "block" : "hidden"} p-3 sm:p-4 md:p-6 lg:p-8`}
+            >
+              <SPKview spkList={spkList} fetchSPK={fetchSPK} />
+            </div>
 
             {/* Tax Calculator View */}
             {activeTab === "tax" && <TaxCalculatorView />}

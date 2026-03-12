@@ -83,7 +83,7 @@ export default function SPKDeleteModal({
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               onClick={onClose}
-              className="py-3.5 rounded-2xl font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm"
+              className="py-3.5 rounded-2xl font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all text-sm"
             >
               Cancel
             </button>

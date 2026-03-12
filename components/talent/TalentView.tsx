@@ -635,7 +635,7 @@ export default function TalentView({
                   setTalentToDelete(null);
                   setDeleteConfirmation("");
                 }}
-                className="flex-1 px-6 py-3 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                className="flex-1 px-6 py-3 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-500/50 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-100 dark:hover:bg-slate-600 transition-all"
               >
                 Cancel
               </button>

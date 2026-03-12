@@ -907,14 +907,14 @@ const TalentTable: React.FC<TalentTableProps> = ({
                   setTalentToDelete(null);
                   setConfirmationText("");
                 }}
-                className="flex-1 py-4 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                className="flex-1 py-4 border border-slate-200 dark:border-slate-500/50 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-sm hover:bg-slate-50 dark:hover:bg-slate-600 transition-all active:scale-95"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmDelete}
                 disabled={confirmationText !== "delete"}
-                className="flex-[1.5] py-4 bg-red-500 text-white rounded-2xl font-black text-sm shadow-lg shadow-red-200 hover:bg-red-600 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-500"
+                className="flex-[1.5] py-4 bg-red-500 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-red-600 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-500"
               >
                 <Trash2 size={16} />
                 Delete

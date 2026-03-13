@@ -24,7 +24,6 @@ export async function POST(request: NextRequest) {
     
     // Kita ambil sebagai TEXT dulu, jangan langsung .json()
     const rawText = await res.text(); 
-    console.log("ISI HTML YANG BIKIN ERROR:", rawText.substring(0, 300));
     
     let data;
     try {
@@ -32,7 +31,6 @@ export async function POST(request: NextRequest) {
       data = JSON.parse(rawText);
     } catch (parseError) {
       // KALAU GAGAL (Artinya isinya HTML error atau teks aneh)
-      console.error("❌ Backend tidak mengirim JSON. Isi asli:", rawText);
       
       return NextResponse.json({
         success: false,

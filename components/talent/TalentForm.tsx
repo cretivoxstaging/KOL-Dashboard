@@ -2,10 +2,10 @@
  * ============================================
  * TALENT FORM COMPONENT
  * ============================================
- * 
+ *
  * Form khusus untuk menambah/edit Talent
  * Source SELALU hardcoded ke "talent"
- * 
+ *
  * Perbedaan dari AddTalentModal:
  * - Tidak ada source dropdown di form
  * - Source otomatis di-set ke "talent" saat submit
@@ -15,6 +15,24 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { X, User, Share2, Briefcase, Heart } from "lucide-react";
+
+function formatPhoneNumber(value: string) {
+  const digitsOnly = value.replace(/\D/g, "");
+
+  if (digitsOnly.startsWith("0")) {
+    return `62${digitsOnly.slice(1)}`;
+  }
+
+  if (digitsOnly.startsWith("8")) {
+    return `62${digitsOnly}`;
+  }
+
+  if (digitsOnly.startsWith("62")) {
+    return digitsOnly;
+  }
+
+  return digitsOnly;
+}
 
 export default function TalentForm({
   onClose,
@@ -87,6 +105,7 @@ export default function TalentForm({
       email: initialData.email || "",
       hijab: initialData.hijab || "no",
       gender: initialData.gender || "",
+      contactPerson: formatPhoneNumber(initialData.contactPerson || ""),
     });
   }, [initialData]);
 
@@ -111,6 +130,7 @@ export default function TalentForm({
           const updatedData = {
             ...formData,
             source: "talent", // HARDCODED
+            contactPerson: formatPhoneNumber(formData.contactPerson || ""),
             igFollowers: syncData.followers,
             tier_ig: syncData.tier,
             er: syncData.er,
@@ -129,6 +149,7 @@ export default function TalentForm({
       const dataToSave = {
         ...formData,
         source: "talent", // HARDCODED
+        contactPerson: formatPhoneNumber(formData.contactPerson || ""),
       };
       onSave(dataToSave);
     }
@@ -195,7 +216,11 @@ export default function TalentForm({
                     "Aquarius",
                     "Pisces",
                   ].map((z) => (
-                    <option key={z} value={z} className="bg-white dark:bg-[#1E293B] text-black dark:text-slate-200">
+                    <option
+                      key={z}
+                      value={z}
+                      className="bg-white dark:bg-[#1E293B] text-black dark:text-slate-200"
+                    >
                       {z}
                     </option>
                   ))}
@@ -221,7 +246,11 @@ export default function TalentForm({
                 >
                   <option value="">Select Religion</option>
                   {RELIGION_OPTIONS.map((rel) => (
-                    <option key={rel} value={rel} className="bg-white dark:bg-[#1E293B] text-black dark:text-slate-200">
+                    <option
+                      key={rel}
+                      value={rel}
+                      className="bg-white dark:bg-[#1E293B] text-black dark:text-slate-200"
+                    >
                       {rel}
                     </option>
                   ))}
@@ -447,7 +476,10 @@ export default function TalentForm({
                 value={formData.contactPerson}
                 placeholder="0812..."
                 onChange={(v: string) =>
-                  setFormData({ ...formData, contactPerson: v })
+                  setFormData({
+                    ...formData,
+                    contactPerson: formatPhoneNumber(v),
+                  })
                 }
               />
               <Input
